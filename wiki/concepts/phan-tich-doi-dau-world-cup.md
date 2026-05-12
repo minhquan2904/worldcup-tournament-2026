@@ -7,6 +7,8 @@ aliases: [head-to-head-worldcup, đối-đầu-world-cup, win-rate-wc]
 status: draft
 related:
   - "[[du-lieu-lich-su-ket-qua-worldcup]]"
+  - "[[cau-truc-giai-dau-worldcup-2026]]"
+  - "[[bang-dau-worldcup-2026]]"
   - "[[mo-hinh-du-doan-world-cup-2026]]"
 summary: "Phương pháp và kết quả phân tích lịch sử đối đầu trực tiếp giữa các đội tuyển qua 22 kỳ FIFA World Cup."
 ---
@@ -73,9 +75,10 @@ Phân tích đối đầu từ bộ dữ liệu lịch sử thường được k
 - **Cơ cấu đội hình** (tuổi trung bình, kinh nghiệm quốc tế)
 - **Kết quả giao hữu** trong 12–24 tháng gần nhất
 
-Dữ liệu lịch sử đóng vai trò như một baseline, không phải predictor duy nhất.
+Dữ liệu lịch sử đóng vai trò như một baseline, không phải predictor duy nhất. Với phân bổ bảng đấu WC 2026 được xác định trong [[bang-dau-worldcup-2026]], có thể áp dụng phân tích H2H trực tiếp cho các cặp đấu nội bộ bảng: ví dụ, England vs Italy (Bảng H) đã gặp nhau nhiều lần trong lịch sử World Cup, hay Argentina vs Belgium (Bảng C) có lịch sử đối đầu đáng chú ý tại Argentina 1978.
 
 ## Nguồn Tham Khảo
 
 - Dữ liệu gốc: [[du-lieu-lich-su-ket-qua-worldcup]]
 - File CSV: `raw/misc/clean_fifa_worldcup_historical_data.csv`
+- Bảng đấu WC 2026: [[bang-dau-worldcup-2026]] · [[cau-truc-giai-dau-worldcup-2026]]

@@ -1,0 +1,105 @@
+home,score,away,year
+Mexico,Match 1,Chile,2026
+Saudi Arabia,Match 2,Peru,2026
+Mexico,Match 25,Saudi Arabia,2026
+Chile,Match 28,Peru,2026
+Mexico,Match 53,Peru,2026
+Chile,Match 54,Saudi Arabia,2026
+Canada,Match 3,Denmark,2026
+Iran,Match 8,Mali,2026
+Canada,Match 26,Iran,2026
+Denmark,Match 27,Mali,2026
+Canada,Match 51,Mali,2026
+Denmark,Match 52,Iran,2026
+Argentina,Match 5,Belgium,2026
+Egypt,Match 7,Cape Verde,2026
+Argentina,Match 29,Egypt,2026
+Belgium,Match 30,Cape Verde,2026
+Argentina,Match 49,Cape Verde,2026
+Belgium,Match 50,Egypt,2026
+United States,Match 4,Morocco,2026
+Ecuador,Match 6,New Zealand,2026
+United States,Match 31,Ecuador,2026
+Morocco,Match 32,New Zealand,2026
+United States,Match 59,New Zealand,2026
+Morocco,Match 60,Ecuador,2026
+Brazil,Match 9,Switzerland,2026
+Tunisia,Match 10,Nigeria,2026
+Brazil,Match 33,Tunisia,2026
+Switzerland,Match 34,Nigeria,2026
+Brazil,Match 55,Nigeria,2026
+Switzerland,Match 56,Tunisia,2026
+France,Match 11,Senegal,2026
+Uzbekistan,Match 12,Austria,2026
+France,Match 35,Uzbekistan,2026
+Senegal,Match 36,Austria,2026
+France,Match 57,Austria,2026
+Senegal,Match 58,Uzbekistan,2026
+England,Match 15,Italy,2026
+Paraguay,Match 16,Turkey,2026
+England,Match 39,Paraguay,2026
+Italy,Match 40,Turkey,2026
+England,Match 63,Turkey,2026
+Italy,Match 64,Paraguay,2026
+Portugal,Match 13,South Korea,2026
+South Africa,Match 14,Panama,2026
+Portugal,Match 37,South Africa,2026
+South Korea,Match 38,Panama,2026
+Portugal,Match 65,Panama,2026
+South Korea,Match 66,South Africa,2026
+Spain,Match 17,Japan,2026
+Qatar,Match 18,Scotland,2026
+Spain,Match 41,Qatar,2026
+Japan,Match 42,Scotland,2026
+Spain,Match 61,Scotland,2026
+Japan,Match 62,Qatar,2026
+Germany,Match 19,Colombia,2026
+Ghana,Match 20,Jordan,2026
+Germany,Match 43,Ghana,2026
+Colombia,Match 44,Jordan,2026
+Germany,Match 69,Jordan,2026
+Colombia,Match 70,Ghana,2026
+Netherlands,Match 23,Uruguay,2026
+Algeria,Match 24,Poland,2026
+Netherlands,Match 47,Algeria,2026
+Uruguay,Match 48,Poland,2026
+Netherlands,Match 71,Poland,2026
+Uruguay,Match 72,Algeria,2026
+Croatia,Match 21,Australia,2026
+Ivory Coast,Match 22,Serbia,2026
+Croatia,Match 45,Ivory Coast,2026
+Australia,Match 46,Serbia,2026
+Croatia,Match 67,Serbia,2026
+Australia,Match 68,Ivory Coast,2026
+Runner-up Group A,Match 73,Runner-up Group B,2026
+Winner Group E,Match 74,3rd Group A/B/C/D/F,2026
+Winner Group F,Match 75,Runner-up Group C,2026
+Winner Group C,Match 76,Runner-up Group F,2026
+Winner Group I,Match 77,3rd Group C/D/F/G/H,2026
+Runner-up Group E,Match 78,Runner-up Group I,2026
+Winner Group A,Match 79,3rd Group C/E/F/H/I,2026
+Winner Group L,Match 80,3rd Group E/H/I/J/K,2026
+Winner Group D,Match 81,3rd Group B/E/F/I/J,2026
+Winner Group G,Match 82,3rd Group A/E/H/I/J,2026
+Runner-up Group K,Match 83,Runner-up Group L,2026
+Winner Group H,Match 84,Runner-up Group J,2026
+Winner Group B,Match 85,3rd Group E/F/G/I/J,2026
+Winner Group J,Match 86,Runner-up Group H,2026
+Winner Group K,Match 87,3rd Group D/E/I/J/L,2026
+Runner-up Group D,Match 88,Runner-up Group G,2026
+Winner Match 74,Match 89,Winner Match 77,2026
+Winner Match 73,Match 90,Winner Match 75,2026
+Winner Match 76,Match 91,Winner Match 78,2026
+Winner Match 79,Match 92,Winner Match 80,2026
+Winner Match 83,Match 93,Winner Match 84,2026
+Winner Match 81,Match 94,Winner Match 82,2026
+Winner Match 86,Match 95,Winner Match 88,2026
+Winner Match 85,Match 96,Winner Match 87,2026
+Winner Match 89,Match 97,Winner Match 90,2026
+Winner Match 93,Match 98,Winner Match 94,2026
+Winner Match 91,Match 99,Winner Match 92,2026
+Winner Match 95,Match 100,Winner Match 96,2026
+Winner Match 97,Match 101,Winner Match 98,2026
+Winner Match 99,Match 102,Winner Match 100,2026
+Loser Match 101,Match 103,Loser Match 102,2026
+Winner Match 101,Match 104,Winner Match 102,2026

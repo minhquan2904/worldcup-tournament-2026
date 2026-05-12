@@ -7,6 +7,8 @@ aliases: [wc-match-data, lịch-sử-kết-quả-world-cup, fifa-historical-resu
 status: draft
 related:
   - "[[phan-tich-doi-dau-world-cup]]"
+  - "[[cau-truc-giai-dau-worldcup-2026]]"
+  - "[[bang-dau-worldcup-2026]]"
   - "[[mo-hinh-du-doan-world-cup-2026]]"
 summary: "Tập dữ liệu 966 trận đấu tại FIFA World Cup 1930–2022 — cấu trúc, đặc điểm, và ứng dụng phân tích thống kê."
 ---
@@ -74,7 +76,7 @@ Bộ dữ liệu là nền tảng phổ biến cho các mô hình dự đoán k�
 1. **Phương pháp thống kê cổ điển** — Poisson regression dựa trên tỉ lệ bàn thắng lịch sử.
 2. **Machine learning** — Gradient boosting hoặc neural network với features bổ sung (FIFA ranking, vị trí địa lý, thành tích vòng loại).
 
-Bộ dữ liệu này tương thích với các pipeline phân tích cho [[mo-hinh-du-doan-world-cup-2026]].
+Bộ dữ liệu này tương thích với các pipeline phân tích cho [[mo-hinh-du-doan-world-cup-2026]]. Với phân bổ bảng đấu WC 2026 đã được xác định trong [[bang-dau-worldcup-2026]], có thể tra lịch sử đối đầu cho từng cặp đội trong cùng bảng (ví dụ: England vs Italy tại Bảng H, Netherlands vs Uruguay tại Bảng L) để làm feature đầu vào.
 
 ## Giới Hạn
 
@@ -85,4 +87,4 @@ Bộ dữ liệu không bao gồm các thông tin bổ trợ như: đội hình 
 ## Nguồn Tham Khảo
 
 - Dữ liệu gốc: `raw/misc/clean_fifa_worldcup_historical_data.csv`
-- Xem thêm: [[phan-tich-doi-dau-world-cup]] · [[mo-hinh-du-doan-world-cup-2026]]
+- Xem thêm: [[phan-tich-doi-dau-world-cup]] · [[cau-truc-giai-dau-worldcup-2026]] · [[bang-dau-worldcup-2026]] · [[mo-hinh-du-doan-world-cup-2026]]

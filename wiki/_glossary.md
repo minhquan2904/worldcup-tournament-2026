@@ -36,6 +36,16 @@ summary: "Key terms and definitions used across the wiki"
 **Định nghĩa:** Tên gọi phi chính thức của trận bán kết FIFA World Cup 2014 giữa Brazil và Germany (1–7), diễn ra tại sân Mineirão, Belo Horizonte. Là thất bại nặng nề nhất của Brazil trong lịch sử World Cup.
 **Xem thêm:** [[phan-tich-doi-dau-world-cup]]
 
+## Round of 32 (Vòng 1/8)
+**Tiếng Việt:** Vòng loại trực tiếp đầu tiên
+**Định nghĩa:** Vòng đấu loại trực tiếp đầu tiên tại World Cup 2026, gồm 32 đội (nhất + nhì mỗi bảng + 8 đội hạng ba tốt nhất) thi đấu 16 trận (Match 73–88). Khái niệm này xuất hiện lần đầu với thể thức 48 đội.
+**Xem thêm:** [[cau-truc-giai-dau-worldcup-2026]]
+
+## Group Draw (Bốc Thăm Phân Bảng)
+**Tiếng Việt:** Bốc thăm phân bảng
+**Định nghĩa:** Quá trình ngẫu nhiên phân bổ các đội tuyển vào các bảng, dưới sự kiểm soát của FIFA. Các hạt giống (seedings) và nhóm địa lý giới hạn các cặp đấu trong vòng bảng.
+**Xem thêm:** [[bang-dau-worldcup-2026]]
+
 <!-- TEMPLATE for new terms:
 ## Term Name
 **Translation:** [if applicable]

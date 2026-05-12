@@ -7,6 +7,19 @@
         "concepts/du-lieu-lich-su-ket-qua-worldcup",
         "concepts/phan-tich-doi-dau-world-cup"
       ]
+    },
+    "raw/misc/wc2026-fixture-raw.md": {
+      "absorbed_at": "2026-05-12",
+      "wiki_articles": [
+        "concepts/cau-truc-giai-dau-worldcup-2026"
+      ]
+    },
+    "raw/misc/wc2026-fixture-format.md": {
+      "absorbed_at": "2026-05-12",
+      "wiki_articles": [
+        "concepts/cau-truc-giai-dau-worldcup-2026",
+        "concepts/bang-dau-worldcup-2026"
+      ]
     }
   }
 }
