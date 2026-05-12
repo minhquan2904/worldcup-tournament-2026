@@ -1,0 +1,169 @@
+name: modular_feature
+version: 1
+
+description: >
+  Modular feature pipeline. Each artifact in separate conversation.
+  Flow: preprocess → srs → init (proposal) → specs → design → tasks → code.
+
+artifacts:
+
+  # 0. PREPROCESS (URD extraction)
+  - id: preprocess
+    generates: pre_process.md
+    description: >
+      Pre-process URD into structured raw extraction — CoS format with Actor→Symbol mapping.
+    template: null
+    instruction: |
+      Output format: CoS (Chain of Symbol). Actors from URD → Symbols (2-4 char).
+      Extract raw data from URD source (Confluence/Jira/file). !interpretation, !infer missing logic.
+      Normalize: Actor → Action → Object → Condition → Result.
+      FR chains: `FR-001: ND → BO.action(params) | constraint | result`
+      Sections: Symbols | FR | NFR | Constraints | Integrations | Assumptions | Resolved Questions | Deprecated
+    requires: []
+
+  # 1. PROPOSAL
+  - id: proposal
+    generates: proposal.md
+    description: >
+      Feature proposal — business flow, scope, impacted services, high-level analysis.
+    template: proposal.md
+    instruction: |
+      Output format: Structured NL (AI-optimized, human-reviewable). !verbose prose.
+      Create proposal: WHY needed + WHAT changes. Foundation for SRS/specs/design/tasks.
+      Source: user input (description, Confluence, docs, codebase) = ONLY source of truth.
+      Sections: Why (2-3 lines) | What Changes (numbered 1-liners) | Capabilities (`name`: 1-line) | Impact (DB/API/Deps/Auth bullets) | Feature Profile (code block)
+      Capabilities section = contract between proposal↔specs. Each listed → corresponding spec file.
+      !implementation details. !paragraphs. Use tables where >3 items.
+    requires: [preprocess]
+
+  # 2. SRS
+  - id: srs
+    generates: srs.md
+    description: >
+      Software Requirements Specification — shared BA/Dev/Tester document. WHAT not HOW.
+    template: srs.md
+    instruction: |
+      Consolidate pre_process.md → complete business-level SRS. Shared BA/Dev/Tester. WHAT not HOW.
+      Enrich with banking domain (idempotency, retry, security, logging). Score quality + detect issues.
+      Sections: Scope (IN/OUT) | Actors | FR (FR-xxx normalized) | Use Case Flows (Mermaid) | Business Rules | Data (LOGICAL only) | Authorization (business-level) | Error Handling (business-level) | Quality Score
+      !technical details: !class names, !file paths, !API endpoints, !HTTP methods, !DTO JSON, !DB column types, !SQL, !DI patterns
+    requires: [preprocess]
+
+  # 3. SPECS (DELTA BEHAVIOR)
+  - id: specs
+    generates: specs/**/*.md
+    description: >
+      Behavioral specs — delta format (ADDED/MODIFIED/REMOVED).
+    template: spec.md
+    instruction: |
+      Output format: Pure CoS v2 (State Transition). Ref: cos_convention.md §4.1.
+      1 spec file per capability from proposal's Capabilities section.
+      New: specs/<capability>/spec.md | Modified: existing folder name.
+      Delta ops (## headers): ADDED | MODIFIED (full updated) | REMOVED (Reason + Migration)
+      SC format: `SC{N}: [state_before] →(action) [state_after] | side_effects`
+      [⊘]=null state, ✗=blocked, [X:∅]=empty. Column-aligned. !GIVEN/WHEN/THEN. !semi-CoS long chains.
+      !implementation details. !lose requirements. !duplicate across files. Testable.
+    requires:
+      - proposal
+      - srs
+
+  # 4. DESIGN (BACKEND)
+  - id: design-be
+    generates: design-be.md
+    description: >
+      Backend design — data model, API contract, .NET architecture mapping.
+    template: design-be.md
+    instruction: |
+      Output format: Structured NL. D1-D9 numbered decisions. Tables for structured data.
+      HOW to implement backend. Use loaded context (artifact_context_modular.yml → design-be):
+      .NET patterns + base classes | Oracle Entity/DTO/Service/Controller conventions | DB naming + modeling rules
+      Sections: Context (2-3 lines) | Goals/Non-Goals (✅/❌) | Decisions (D1-D9) | Package Structure | DDL | Risks (table)
+      MUST follow loaded patterns. MUST map ONLY backend. !invent outside specs. !verbose prose.
+    requires:
+      - proposal
+      - srs
+      - specs
+
+  # 5. TASKS (BACKEND)
+  - id: tasks-be
+    generates: tasks-be.md
+    description: >
+      Backend tasks — ordered by dependency (Entity → DTO → Service → Controller).
+    template: tasks-be.md
+    instruction: |
+      Output format: Structured NL. L0-L6 layer numbering. T{N}.{M} task notation.
+      Order: L0=DDL → L1=Entity → L2=DTOs → L3=Mapper → L4=Service → L5=Constants → L6=Controller
+      Each task: `- [ ] **T{N}.{M}: title** → \`file_path\` [NEW]` + 1-2 lines props/constraints.
+      Props inline: `Code(string,[Key]), Value, Desc`. Traceability: every design-be component → task.
+    requires:
+      - design-be
+
+  # 6. DESIGN (FRONTEND)
+  - id: design-fe
+    generates: design-fe.md
+    description: >
+      Frontend design — UI components, API integration, Angular routing.
+    template: design-fe.md
+    instruction: |
+      Output format: Structured NL. D1-D7 numbered decisions. Tables for structured data.
+      HOW to implement frontend UI. Use loaded context (artifact_context_modular.yml → design-fe):
+      Angular patterns + base components | Services, Routing, Dialogs conventions
+      Sections: Context (2-3 lines) | Goals/Non-Goals (✅/❌) | Decisions (D1-D7) | Package Structure | Risks
+      MUST follow loaded patterns. MUST map ONLY frontend. !invent outside specs. !verbose prose.
+    requires:
+      - proposal
+      - srs
+      - specs
+
+  # 7. TASKS (FRONTEND)
+  - id: tasks-fe
+    generates: tasks-fe.md
+    description: >
+      Frontend tasks — ordered by UI dependency (DTO → Service → Routing → List → Form).
+    template: tasks-fe.md
+    instruction: |
+      Output format: Structured NL. L0-L5 layer numbering. T{N}.{M} task notation.
+      Order: L0=DTOs(TS) → L1=API Service → L2=Module+Routing → L3=List Component → L4=Form Component → L5=Detail/Modal
+      Each task: `- [ ] **T{N}.{M}: title** → \`file_path\` [NEW]` + 1-2 lines props.
+      Traceability: every design-fe component → task.
+    requires:
+      - design-fe
+
+  # 8. REVIEW (BACKEND)
+  - id: review-be
+    generates: review-be/**/*.md
+    description: >
+      Backend post-implementation review — scan code, produce tracking artifacts.
+    template: review-be.md
+    instruction: |
+      Output format: Structured NL. Severity icons (🔴/🟠/🟡/✅). Compact tables.
+      Scan implemented BE source → produce:
+      1. todo-uncover-be.md — C{N}/W{N}/I{N} severity-coded findings with file links
+      2. new-apis.md — METHOD /path → ResponseType + Auth + JSON schemas
+      3. delta-spec-be.md — Δ{N} deltas with Aspect|Spec|Actual tables
+    requires:
+      - tasks-be
+
+  # 9. REVIEW (FRONTEND)
+  - id: review-fe
+    generates: review-fe/**/*.md
+    description: >
+      Frontend post-implementation review — scan code, produce tracking artifacts.
+    template: review-fe.md
+    instruction: |
+      Output format: Structured NL. Severity icons (🔴/🟠/🟡/✅). Compact tables.
+      Scan implemented FE source → produce:
+      1. todo-uncover-fe.md — C{N}/W{N}/I{N} severity-coded findings with file links
+      2. delta-spec-fe.md — Δ{N} deltas with Aspect|Spec|Actual tables
+    requires:
+      - tasks-fe
+
+  # 10. ARCHIVE
+  - id: archive
+    generates: archive.md
+    description: >
+      Finalize pipeline branch and notify to archive.
+    template: archive.md
+    instruction: |
+      Finalize pipeline branch. Provide success message.
+    requires: []

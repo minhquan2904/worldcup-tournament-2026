@@ -1,0 +1,58 @@
+schema: modular_feature
+
+# =====================================
+# ENVIRONMENT
+# =====================================
+environment:
+  language: vi-VN
+
+  tech_stack:
+    - React 18 with TypeScript
+    - Vite 5 (via zmp-vite-plugin)
+    - Jotai 2 (state management — providerless)
+    - react-router-dom v7 (createBrowserRouter + basename for Zalo WebView)
+    - react-hot-toast v2 (toast notifications)
+    - ZMP SDK (Zalo Mini App platform — getUserInfo)
+    - ZMP UI ^1.11.7 (CSS vars only — routing/shell REMOVED)
+    - Tailwind CSS 3
+    - SCSS
+
+# =====================================
+# GLOBAL RULES (BASELINE)
+# =====================================
+# rules must be object: { artifactId: string[] }
+# openspec validates keys against schema artifact IDs
+_baseline: &baseline
+  - MUST use collected input sources as single source of truth
+  - MUST NOT invent requirements outside provided inputs
+  - "MUST ensure full traceability: Requirement → Spec → Design → Task"
+  - MUST validate consistency before finishing output
+  - Each workflow step runs in a separate conversation — read previous artifacts from disk
+
+rules:
+  proposal: *baseline
+  srs: *baseline
+  specs: *baseline
+  design-fe: *baseline
+  tasks-fe: *baseline
+  review-fe: *baseline
+
+# =====================================
+# MERGE STRATEGY
+# =====================================
+merge:
+  context: append
+  rules: append
+  skills: append
+
+# =====================================
+# PROMPT BUILD STRATEGY
+# =====================================
+prompt:
+  structure:
+    - ENVIRONMENT
+    - RULES
+    - SKILLS
+    - CONTEXT
+    - INPUT
+    - TASK

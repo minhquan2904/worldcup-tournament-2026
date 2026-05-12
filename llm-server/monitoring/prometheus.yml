@@ -1,0 +1,16 @@
+# Prometheus config for LLM Server monitoring
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: "ollama"
+    metrics_path: /api/tags        # Ollama không có /metrics, dùng health probe
+    static_configs:
+      - targets: ["ollama:11434"]
+    scrape_interval: 30s
+
+  # Uncomment nếu bật Nginx proxy
+  # - job_name: "nginx"
+  #   static_configs:
+  #     - targets: ["nginx:11435"]

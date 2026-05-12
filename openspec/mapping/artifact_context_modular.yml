@@ -1,0 +1,418 @@
+# =======================================
+# MODULAR FEATURE PIPELINE — Context Mapping
+# =======================================
+# Used by pipeline steps (workflows/steps/*)
+# Referenced by: pipelines/feature-pipeline.md
+#
+# ENFORCEMENT: Mọi item trong `required_rules`, `required_skills`, và `required_agents`
+# PHẢI được đọc trước khi sinh artifact. Nếu file không tồn tại → HALT.
+# `requires` — artifact IDs (from schema.yaml DAG). If ANY required artifact missing → HALT pipeline.
+#   Synced with: openspec/schemas/modular_feature/schema.yaml
+# `required_agents` — agent instruction files loaded as system context.
+#
+# CONTEXT LOADING GUIDE:
+# - `context` items are SOFT-LOADED (warn if missing, do NOT halt)
+# - Pipeline phases read previous outputs (proposal → srs → design → tasks)
+#   so context flows through change artifacts — minimize injected knowledge
+# - Use selective file paths, AVOID glob patterns (**.md, *.md)
+# - Only inject knowledge that the phase CANNOT get from its input artifacts
+# - Use precise paths to minimize context window usage:
+#   • system_overview.md      — tech stack, architecture pattern (map-structures)
+#   • features.md             — feature registry (learn step 15)
+#   • structures/propose/**   — architecture/pattern knowledge (learn-* sub-skills)
+#   • structures/*.md         — service-specific architecture docs (map-structures --service)
+
+# =======================================
+# SHARED ANCHORS — System Rules
+# =======================================
+_sys_rules: &sys_rules
+  - .agent/common_rules/SYS-01-system-scope.md
+  - .agent/common_rules/SYS-02-workflow-constraint.md
+  - .agent/common_rules/SYS-03-reflection-critique.md
+  - .agent/common_rules/SYS-04-tool-usage.md
+  - .agent/common_rules/SYS-05-coding-discipline.md
+
+# =======================================
+# AGENT BASE ANCHORS — Single Source of Truth per Agent
+# =======================================
+# Mỗi agent có 1 bộ anchors (agent, rules, skills).
+# Tất cả workflow sections + standalone sections ĐỀU reference cùng anchors này.
+# → Đảm bảo hard constraints LUÔN được enforce dù gọi qua pipeline hay trực tiếp.
+
+
+# ---- angular-specialist ----
+_angular_agent: &angular_agent
+  - .agent/agents/angular-specialist.md
+
+_angular_rules: &angular_rules
+  - *sys_rules
+  - base_knowledge/common_rules/PRJ-07-angular-scan-rule.md
+
+_angular_skills: &angular_skills
+  - base_knowledge/standards/angular-convention-checker/**
+  - base_knowledge/standards/angular-code-generation/**
+  - base_knowledge/standards/api-patterns/**
+
+# ---- database-specialist ----
+_database_agent: &database_agent
+  - .agent/agents/database-specialist.md
+
+_database_rules: &database_rules
+  - *sys_rules
+  - base_knowledge/common_rules/PRJ-01-database-naming-convention.md
+  - base_knowledge/common_rules/PRJ-02-oracle-gen-table-rule.md
+
+_database_skills: &database_skills
+  - base_knowledge/standards/database-design/**
+
+# ---- security-specialist ----
+_security_agent: &security_agent
+  - .agent/agents/security-specialist.md
+
+_security_rules: &security_rules
+  - *sys_rules
+  - base_knowledge/common_rules/PRJ-06-owasp-security-scan-rule.md
+
+# ---- ba-specialist ----
+_ba_agent: &ba_agent
+  - .agent/agents/ba-specialist.md
+
+
+# =======================================
+# PHASE 1: REQUIREMENTS (Steps 0-1) — Shared
+# =======================================
+preprocess:
+  requires: []  # Step 0 — no prior artifact needed
+  required_change_artifacts: []  # đầu vào từ user, không cần artifact trước
+  context: []
+  required_rules: *sys_rules
+  required_skills: []
+
+# Needs: project overview to understand scope + features list to classify
+proposal:
+  requires: [preprocess]  # HALT if preprocess not completed
+  required_change_artifacts:
+    - pre_process.md  # Output từ preprocess step
+    - srs.md
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/features.md
+  required_rules: []
+  required_skills: []
+
+srs:
+  requires: [preprocess]  # HALT if preprocess not completed
+  required_change_artifacts:
+    - pre_process.md   # Thông tin user đã xử lý
+    - proposal.md      # Scope & phạm vi feature
+  context: []
+  required_agents: *ba_agent
+  required_rules: []
+  required_skills: []
+
+# =======================================
+# PHASE 2: OPENSPEC (Steps 2-3) — Shared
+# =======================================
+specs:
+  requires: [proposal, srs]  # HALT if proposal or srs not completed
+  required_change_artifacts:
+    - srs.md           # Yêu cầu nghiệp vụ đã chuẩn hoá
+    - proposal.md      # Scope feature
+  context: []
+  required_rules: []
+  required_skills: []
+
+# =======================================
+# PHASE 3: DESIGN & TASKS — Backend
+# =======================================
+design-be:
+  requires: [proposal, srs, specs]  # HALT if any not completed
+  required_change_artifacts:
+    - srs.md           # Yêu cầu nghiệp vụ
+    - specs/*.md       # Behavioral specs từ openspec
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/propose/knowledge_architecture.md
+    - base_knowledge/structures/propose/knowledge_entity_dbcontext.md
+    - base_knowledge/structures/propose/knowledge_dto.md
+    - base_knowledge/structures/propose/knowledge_service.md
+    - base_knowledge/structures/propose/knowledge_controller.md
+  required_rules:
+    - *sys_rules
+    - base_knowledge/common_rules/PRJ-01-database-naming-convention.md
+    - base_knowledge/common_rules/PRJ-02-oracle-gen-table-rule.md
+    - base_knowledge/common_rules/PRJ-03-logical-data-modeling-rule.md
+    - base_knowledge/common_rules/PRJ-09-response-rules.md
+    - base_knowledge/common_rules/PRJ-10-planning-feature-rule.md
+    - base_knowledge/common_rules/PRJ-11-validate-request-rules.md
+  required_skills: []
+
+tasks-be:
+  requires: [design-be]  # HALT if design-be not completed
+  required_change_artifacts:
+    - srs.md           # Yêu cầu nghiệp vụ
+    - design-be.md     # Thiết kế kiến trúc BE
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/propose/knowledge_architecture.md
+    - base_knowledge/structures/propose/knowledge_entity_dbcontext.md
+    - base_knowledge/structures/propose/knowledge_dto.md
+    - base_knowledge/structures/propose/knowledge_service.md
+    - base_knowledge/structures/propose/knowledge_controller.md
+  required_rules: []
+  required_skills: []
+
+# =======================================
+# PHASE 3: DESIGN & TASKS — Frontend
+# =======================================
+design-fe:
+  requires: [proposal, srs, specs]  # HALT if any not completed
+  required_change_artifacts:
+    - srs.md           # Yêu cầu nghiệp vụ
+    - specs/*.md       # Behavioral specs từ openspec
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/propose/knowledge_ng_architecture.md
+    - base_knowledge/structures/propose/knowledge_ng_component.md
+    - base_knowledge/structures/propose/knowledge_ng_service.md
+  required_rules:
+    - *sys_rules
+    - base_knowledge/common_rules/PRJ-07-angular-scan-rule.md
+    - base_knowledge/common_rules/PRJ-10-planning-feature-rule.md
+  required_skills: []
+
+tasks-fe:
+  requires: [design-fe]  # HALT if design-fe not completed
+  required_change_artifacts:
+    - srs.md           # Yêu cầu nghiệp vụ
+    - design-fe.md     # Thiết kế kiến trúc FE
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/propose/knowledge_ng_architecture.md
+    - base_knowledge/structures/propose/knowledge_ng_component.md
+    - base_knowledge/structures/propose/knowledge_ng_service.md
+  required_rules: []
+  required_skills: []
+
+# =======================================
+# PHASE 4: REVIEW
+# =======================================
+review-be:
+  requires: [tasks-be]  # HALT if tasks-be not completed
+  required_change_artifacts:
+    - design-be.md     # Thiết kế để so sánh
+    - tasks-be.md      # Tasks để check coverage
+  context:
+    - base_knowledge/structures/system_overview.md
+  required_agents: *dotnet_agent
+  required_rules: *dotnet_rules
+  required_skills:
+    - base_knowledge/standards/dotnet-convention-checker/**
+
+review-fe:
+  requires: [tasks-fe]  # HALT if tasks-fe not completed
+  required_change_artifacts:
+    - design-fe.md     # Thiết kế để so sánh
+    - tasks-fe.md      # Tasks để check coverage
+  context:
+    - base_knowledge/structures/system_overview.md
+  required_agents: *angular_agent
+  required_rules: *angular_rules
+  required_skills:
+    - base_knowledge/standards/angular-convention-checker/**
+
+# =======================================
+# PHASE 5: ARCHIVE
+# =======================================
+archive:
+  requires: []  # Terminal step — no pipeline prereqs
+  required_change_artifacts:
+    - metadata.yaml
+    - srs.md
+    - proposal.md
+  context: []
+  required_rules: []
+  required_skills: []
+
+# =======================================
+# STANDALONE WORKFLOWS (Steps 6a-6h)
+# =======================================
+# Mỗi workflow section reference cùng agent anchors → đảm bảo
+# hard constraints giống hệt khi gọi trực tiếp hay qua pipeline.
+
+# Oracle DDL, CRUD, Report — all use database-specialist
+oracle-tools:
+  required_change_artifacts:
+    - design-be.md     # DDL specs, table structure
+    - tasks-be.md      # Database tasks
+  context: []
+  required_agents: *database_agent
+  required_rules: *database_rules
+  required_skills: *database_skills
+
+# PostgreSQL — extends database base + postgres-specific docs
+postgres-tools:
+  required_change_artifacts:
+    - design-be.md
+    - tasks-be.md
+  context: []
+  required_agents: *database_agent
+  required_rules: *database_rules
+  required_skills:
+    - *database_skills
+    - base_knowledge/standards/postgres-docs/**
+
+# .NET scan — convention checking
+dotnet-scan:
+  required_change_artifacts: []  # Scan code hiện có, không cần change artifacts
+  context: []
+  required_agents: *dotnet_agent
+  required_rules: *dotnet_rules
+  required_skills: *dotnet_skills
+
+# .NET code generation — needs full knowledge + project context
+dotnet-gen:
+  required_change_artifacts:
+    - design-be.md     # Thiết kế kiến trúc & API specs
+    - tasks-be.md      # Implementation tasks
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/propose/knowledge_architecture.md
+    - base_knowledge/structures/propose/knowledge_entity_dbcontext.md
+    - base_knowledge/structures/propose/knowledge_dto.md
+    - base_knowledge/structures/propose/knowledge_service.md
+    - base_knowledge/structures/propose/knowledge_controller.md
+    - base_knowledge/structures/propose/knowledge_interface_pattern.md
+    - base_knowledge/structures/propose/knowledge_mapper.md
+  required_agents: *dotnet_agent
+  required_rules: *dotnet_rules
+  required_skills: *dotnet_skills
+
+# Angular scan — convention checking
+angular-scan:
+  context: []
+  required_agents: *angular_agent
+  required_rules: *angular_rules
+  required_skills: *angular_skills
+
+# Angular code generation — needs full knowledge + new-apis.md from review-be
+angular-gen:
+  required_change_artifacts:
+    - new-apis.md      # API catalog từ review-be — endpoints, auth, request/response schemas
+    - design-fe.md     # Thiết kế kiến trúc FE
+    - tasks-fe.md      # Frontend tasks to implement
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/propose/knowledge_ng_architecture.md
+    - base_knowledge/structures/propose/knowledge_ng_component.md
+    - base_knowledge/structures/propose/knowledge_ng_service.md
+  required_agents: *angular_agent
+  required_rules: *angular_rules
+  required_skills: *angular_skills
+
+# Security scan
+security-scan:
+  context: []
+  required_agents: *security_agent
+  required_rules: *security_rules
+  required_skills: []
+
+# Sync task
+sync-task:
+  context: []
+  required_rules: *sys_rules
+  required_skills: []
+
+# =======================================
+# CALIBRATE PIPELINES
+# =======================================
+calibrate-knowledge:
+  context:
+    - base_knowledge/standards/**
+    - base_knowledge/common_rules/**
+    - base_knowledge/structures/**
+  required_rules:
+    - *sys_rules
+    - base_knowledge/common_rules/PRJ-05-dotnet-scan-rule.md
+    - base_knowledge/common_rules/PRJ-07-angular-scan-rule.md
+  required_skills:
+    - base_knowledge/standards/dotnet-convention-checker/**
+    - base_knowledge/standards/angular-convention-checker/**
+
+# /calibrate-knowledge --dotnet
+calibrate-dotnet:
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/propose/**.md
+    - base_knowledge/standards/dotnet-convention-checker/**
+    - base_knowledge/standards/dotnet-code-generation/**
+  required_agents: *dotnet_agent
+  required_rules: *dotnet_rules
+  required_skills: *dotnet_skills
+
+# /calibrate-knowledge --angular
+calibrate-angular:
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/propose/**.md
+    - base_knowledge/standards/angular-convention-checker/**
+    - base_knowledge/standards/angular-code-generation/**
+  required_agents: *angular_agent
+  required_rules: *angular_rules
+  required_skills: *angular_skills
+
+# =======================================
+# CR (CHANGE REQUEST) PIPELINE
+# =======================================
+# Reads archived feature as baseline, focused scan only affected modules.
+cr-analyze:
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/*.md
+    - base_knowledge/structures/propose/**.md
+  required_rules: *sys_rules
+  required_skills: []
+
+# =======================================
+# STANDALONE AGENTS (invoked directly by user, e.g. @dotnet-specialist)
+# =======================================
+# Dùng CÙNG anchors với workflow sections → đảm bảo constraints ĐỒNG NHẤT.
+# Chỉ khác ở `context` (standalone load full context vì không có pipeline artifacts).
+
+dotnet-specialist:
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/propose/**.md
+  required_agents: *dotnet_agent
+  required_rules: *dotnet_rules
+  required_skills: *dotnet_skills
+
+angular-specialist:
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/propose/**.md
+  required_agents: *angular_agent
+  required_rules: *angular_rules
+  required_skills: *angular_skills
+
+database-specialist:
+  context:
+    - base_knowledge/structures/system_overview.md
+  required_agents: *database_agent
+  required_rules: *database_rules
+  required_skills: *database_skills
+
+ba-specialist:
+  context:
+    - base_knowledge/structures/system_overview.md
+    - base_knowledge/structures/features.md
+  required_agents: *ba_agent
+  required_rules: *sys_rules
+  required_skills: []
+
+security-specialist:
+  context:
+    - base_knowledge/structures/system_overview.md
+  required_agents: *security_agent
+  required_rules: *security_rules
+  required_skills: []

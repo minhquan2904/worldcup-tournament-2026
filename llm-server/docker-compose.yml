@@ -1,0 +1,113 @@
+services:
+  ollama:
+    image: ollama/ollama:0.21.2    # Pin version — https://github.com/ollama/ollama/releases
+    container_name: llm-server
+    ports:
+      - "${LLM_PORT:-11434}:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0                          # Listen tất cả interfaces (LAN)
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-2} # Số request xử lý song song
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-1}  # Số model giữ trong VRAM
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          memory: ${LLM_MEMORY_LIMIT:-8g}            # Giới hạn RAM tối đa
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s          # Chờ Ollama khởi động xong
+    entrypoint: >
+      sh -c "ollama serve &
+      sleep 5 &&
+      echo '📦 Pulling models...' &&
+      for model in ${LLM_MODELS:-qwen2.5-coder:3b}; do
+        echo \"  → Pulling $$model\" &&
+        ollama pull $$model;
+      done &&
+      echo '✅ All models ready' &&
+      wait"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"          # Mỗi file log tối đa 10MB
+        max-file: "3"            # Giữ 3 file log (tổng 30MB)
+
+  # ──────────────────────────────────────────────────
+  # OPTIONAL: Nginx Reverse Proxy (API key auth + rate limit)
+  # Bật bằng: docker compose --profile proxy up -d
+  # ──────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: llm-proxy
+    profiles: ["proxy"]
+    ports:
+      - "${PROXY_PORT:-11435}:11435"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ──────────────────────────────────────────────────
+  # OPTIONAL: Prometheus + Grafana Monitoring
+  # Bật bằng: docker compose --profile monitoring up -d
+  # ──────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: llm-prometheus
+    profiles: ["monitoring"]
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: llm-grafana
+    profiles: ["monitoring"]
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  ollama-models:
+  prometheus-data:
+  grafana-data:
