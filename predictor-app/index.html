@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dự đoán World Cup 2026 với AI · v2.0</title>
+<!-- v2.0 — AI phân tích từ 966 trận World Cup lịch sử + bảng đấu chính thức -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body {
+    font-family: 'Work Sans', 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    background:
+      radial-gradient(ellipse at top, rgba(16, 185, 129, 0.15), transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(59, 130, 246, 0.12), transparent 50%),
+      #0a0f1c;
+    min-height: 100vh;
+  }
+  h1, h2, h3, h4 { font-family: 'Outfit', 'Work Sans', system-ui, sans-serif; letter-spacing: -0.01em; }
+  /* Visible focus rings for keyboard nav */
+  button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visible {
+    outline: 2px solid #34d399;
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+  /* Clickable cursor on all interactive controls */
+  button, a, summary, [role="button"] { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  .group-card {
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.55));
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(16, 185, 129, 0.18);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .group-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(16, 185, 129, 0.45);
+    box-shadow: 0 12px 40px rgba(16, 185, 129, 0.12);
+  }
+  .match-row { transition: background 0.15s ease; }
+  .match-row:hover { background: rgba(16, 185, 129, 0.06); }
+  .pred-panel {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.08));
+    border-left: 3px solid #10b981;
+  }
+  .pred-block {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+  }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.25);
+    border-top-color: #10b981;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast {
+    animation: slideIn 0.3s ease, fadeOut 0.3s ease 3.7s forwards;
+  }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes fadeOut { to { opacity: 0; transform: translateX(100%); } }
+  .flag { font-size: 1.4em; line-height: 1; }
+  .hero-bg {
+    background:
+      radial-gradient(circle at 20% 30%, rgba(16, 185, 129, 0.25), transparent 40%),
+      radial-gradient(circle at 80% 40%, rgba(59, 130, 246, 0.20), transparent 40%),
+      linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.6));
+  }
+  .v2-badge {
+    background: linear-gradient(90deg, rgba(16,185,129,0.25), rgba(59,130,246,0.25));
+    border: 1px solid rgba(16, 185, 129, 0.45);
+  }
+  .prob-bar {
+    height: 10px;
+    border-radius: 9999px;
+    overflow: hidden;
+    display: flex;
+    background: rgba(15,23,42,0.8);
+  }
+  .prob-seg { transition: width 0.5s ease; }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  .data-table th, .data-table td { padding: 6px 8px; }
+  .data-table th { color: #94a3b8; font-weight: 500; text-align: left; }
+  .modal-bg { background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(6px); }
+  .modal-card {
+    background: linear-gradient(160deg, rgba(15,23,42,0.97), rgba(15,23,42,0.88));
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .chip {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #6ee7b7;
+  }
+  .scrollbar::-webkit-scrollbar { width: 8px; }
+  .scrollbar::-webkit-scrollbar-thumb { background: rgba(16,185,129,0.3); border-radius: 4px; }
+  /* Respect reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; border-top-color: rgba(255,255,255,0.6); }
+    .toast { animation: none; }
+    .group-card, .match-row, .prob-seg { transition: none !important; }
+    .group-card:hover { transform: none; }
+    * { scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body class="text-slate-100">
+
+<!-- === HERO HEADER === -->
+<header class="hero-bg border-b border-emerald-500/20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-3xl sm:text-4xl">🇺🇸</span>
+          <span class="text-3xl sm:text-4xl">🇨🇦</span>
+          <span class="text-3xl sm:text-4xl">🇲🇽</span>
+          <span class="ml-2 text-xs sm:text-sm uppercase tracking-widest text-emerald-400 font-semibold">FIFA World Cup 2026</span>
+        </div>
+        <h1 class="text-3xl sm:text-5xl font-black tracking-tight">
+          Dự đoán <span class="bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">World Cup 2026</span>
+        </h1>
+        <p class="text-slate-300 mt-2 text-sm sm:text-base">
+          AI phân tích từng trận · 48 đội · 12 bảng · 11/6 → 19/7, 2026
+        </p>
+        <div class="mt-3 inline-flex items-center gap-2 v2-badge rounded-full px-3 py-1.5 text-xs">
+          <span class="font-bold text-emerald-300">🆕 v2.0</span>
+          <span class="text-slate-300">·</span>
+          <span class="text-slate-200">AI phân tích từ <b class="text-emerald-300">966 trận WC lịch sử</b></span>
+          <span class="text-slate-300">·</span>
+          <span class="text-slate-200">Bảng đấu chính thức</span>
+        </div>
+      </div>
+      <div class="flex gap-2 flex-wrap items-start">
+        <a href="./landing.html" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm font-medium transition inline-flex items-center gap-1 text-slate-100 no-underline" aria-label="Quay lại trang giới thiệu">
+          ← Giới thiệu
+        </a>
+        <div id="countdown" class="bg-slate-900/70 border border-emerald-500/30 rounded-xl px-4 py-3 text-center" aria-label="Đếm ngược đến khai mạc">
+          <div class="text-xs text-slate-400 uppercase tracking-wide">Khai mạc còn</div>
+          <div class="text-2xl font-bold text-emerald-400" id="countdownValue">--</div>
+        </div>
+        <button id="methodologyBtn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm font-medium transition" aria-label="Mở phần giải thích cách AI dự đoán">
+          ℹ️ Cách AI dự đoán
+        </button>
+        <button id="settingsBtn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm font-medium transition" aria-label="Mở cài đặt API key">
+          ⚙️ Cài đặt
+        </button>
+      </div>
+    </div>
+
+    <div class="mt-6 flex flex-col sm:flex-row gap-3">
+      <button id="predictAllBtn" class="flex-1 sm:flex-none bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-400 hover:to-blue-400 text-white font-bold rounded-xl px-6 py-3 transition shadow-lg shadow-emerald-500/20">
+        🔮 Dự đoán toàn bộ vòng bảng (72 trận)
+      </button>
+      <button id="clearCacheBtn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-4 py-3 text-sm font-medium transition">
+        🗑️ Xoá cache
+      </button>
+      <div id="progressWrap" class="hidden flex-1 bg-slate-900/70 border border-slate-700 rounded-xl px-4 py-3">
+        <div class="flex justify-between text-xs mb-1">
+          <span id="progressLabel" class="text-slate-300">Đang phân tích...</span>
+          <span id="progressCount" class="text-emerald-400 font-semibold">0/72</span>
+        </div>
+        <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+          <div id="progressBar" class="h-2 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- === MAIN CONTENT === -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+  <div id="groupsContainer" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+
+  <footer class="mt-12 text-center text-xs text-slate-500">
+    <p>Dữ liệu lịch sử: 966 trận FIFA World Cup (1930-2022) · Powered by Google Gemini 2.5 Flash</p>
+    <p class="mt-1">Đây là dự đoán mang tính tham khảo — bóng đá luôn bất ngờ ⚽</p>
+  </footer>
+</main>
+
+<!-- === SETTINGS MODAL === -->
+<div id="settingsModal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+  <div class="modal-card rounded-2xl max-w-md w-full p-6 shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-bold text-emerald-300">⚙️ Cài đặt</h3>
+      <button id="closeSettingsBtn" class="text-slate-400 hover:text-white text-2xl leading-none" aria-label="Đóng cài đặt">×</button>
+    </div>
+    <label class="text-sm text-slate-300 block mb-1.5">Gemini API Key</label>
+    <input type="password" id="apiKeyInput" placeholder="AIza..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+    <p class="text-xs text-slate-500 mt-1.5">Lấy key miễn phí tại <a href="https://aistudio.google.com/apikey" target="_blank" class="text-emerald-400 hover:underline">aistudio.google.com/apikey</a></p>
+    <p class="text-xs text-slate-500 mt-0.5">Key được lưu cục bộ trong trình duyệt, không gửi đi đâu cả.</p>
+    <button id="saveKeyBtn" class="mt-4 w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg py-2.5 transition">
+      Lưu
+    </button>
+  </div>
+</div>
+
+<!-- === METHODOLOGY MODAL === -->
+<div id="methodologyModal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+  <div class="modal-card rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto scrollbar">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-bold text-emerald-300">ℹ️ Cách AI dự đoán</h3>
+      <button id="closeMethodologyBtn" class="text-slate-400 hover:text-white text-2xl leading-none" aria-label="Đóng phần giải thích">×</button>
+    </div>
+    <div class="space-y-4 text-sm text-slate-200 leading-relaxed">
+      <p>v2.0 sử dụng phương pháp <b class="text-emerald-300">lai (hybrid)</b> kết hợp 3 tầng dữ liệu trước khi AI đưa ra dự đoán:</p>
+
+      <div class="pred-block rounded-lg p-4">
+        <div class="font-bold text-emerald-300 mb-1">🧮 Tầng 1 — Thống kê đối đầu (H2H)</div>
+        <p>Trích xuất từ <b>966 trận World Cup lịch sử (1930-2022)</b>. Với mỗi cặp đội, tính: tổng số trận gặp nhau, số trận thắng/hòa/thua, tổng bàn thắng, và <b>win rate có giảm thời gian</b> (trọng số ~0.95^số_năm — trận gần đây quan trọng hơn).</p>
+      </div>
+
+      <div class="pred-block rounded-lg p-4">
+        <div class="font-bold text-emerald-300 mb-1">💪 Tầng 2 — Sức mạnh lịch sử</div>
+        <p>Với mỗi đội: số kỳ World Cup tham dự, số lần vô địch, tỷ lệ thắng tổng thể, trung bình bàn thắng/thủng, và <b>phong độ 2 kỳ gần nhất (2018 + 2022)</b>.</p>
+      </div>
+
+      <div class="pred-block rounded-lg p-4">
+        <div class="font-bold text-emerald-300 mb-1">🌍 Tầng 3 — Bối cảnh 2026</div>
+        <p>Tier FIFA ranking ước lượng (1-4), lợi thế sân nhà (Mỹ/Canada/Mexico), thông tin liên đoàn (UEFA, CONMEBOL, CAF, AFC, CONCACAF, OFC).</p>
+      </div>
+
+      <div class="pred-block rounded-lg p-4">
+        <div class="font-bold text-emerald-300 mb-1">🤖 Tầng 4 — Gemini 2.5 Flash</div>
+        <p>AI nhận đầy đủ 3 tầng dữ liệu trên + dùng kiến thức về phong độ <b>2024-2026, cầu thủ ngôi sao, HLV, lối chơi</b>. Trả về xác suất 3 kết quả (cộng = 100%), tỉ số dự đoán, 3 yếu tố then chốt, và 3 đoạn phân tích.</p>
+      </div>
+
+      <p class="text-xs text-slate-400 mt-2">
+        💡 <b>Minh bạch:</b> Mỗi dự đoán có nút "📊 Dữ liệu AI đã dùng" cho phép bạn xem chính xác các số liệu thô đưa vào prompt.
+      </p>
+
+      <div class="pred-block rounded-lg p-4 border-yellow-500/30">
+        <div class="font-bold text-yellow-300 mb-1">⚠️ Lưu ý về tên đội</div>
+        <p class="text-xs">Các đội cũ được ánh xạ sang đội hiện đại khi tra cứu H2H: West Germany → Germany, Soviet Union → Russia, Czechoslovakia → Czech Republic, Yugoslavia / FR Yugoslavia → Serbia. Có thể không hoàn toàn chính xác về mặt lịch sử nhưng hữu ích cho mục đích dự đoán.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === TOAST CONTAINER === -->
+<div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+<script>
+// ============================================================
+// === DATA: HISTORICAL MATCHES (966 → 965 valid rows) ========
+// ============================================================
+const HISTORICAL_MATCHES = [
+{h:"France",a:"Mexico",y:1930,hg:4,ag:1},{h:"Argentina",a:"France",y:1930,hg:1,ag:0},{h:"Chile",a:"Mexico",y:1930,hg:3,ag:0},{h:"Chile",a:"France",y:1930,hg:1,ag:0},{h:"Argentina",a:"Mexico",y:1930,hg:6,ag:3},{h:"Argentina",a:"Chile",y:1930,hg:3,ag:1},{h:"Yugoslavia",a:"Brazil",y:1930,hg:2,ag:1},{h:"Yugoslavia",a:"Bolivia",y:1930,hg:4,ag:0},{h:"Brazil",a:"Bolivia",y:1930,hg:4,ag:0},{h:"Romania",a:"Peru",y:1930,hg:3,ag:1},
+{h:"Uruguay",a:"Peru",y:1930,hg:1,ag:0},{h:"Uruguay",a:"Romania",y:1930,hg:4,ag:0},{h:"United States",a:"Belgium",y:1930,hg:3,ag:0},{h:"United States",a:"Paraguay",y:1930,hg:3,ag:0},{h:"Paraguay",a:"Belgium",y:1930,hg:1,ag:0},{h:"Argentina",a:"United States",y:1930,hg:6,ag:1},{h:"Uruguay",a:"Yugoslavia",y:1930,hg:6,ag:1},{h:"Uruguay",a:"Argentina",y:1930,hg:4,ag:2},{h:"Spain",a:"Brazil",y:1934,hg:3,ag:1},{h:"Hungary",a:"Egypt",y:1934,hg:4,ag:2},
+{h:"Switzerland",a:"Netherlands",y:1934,hg:3,ag:2},{h:"Italy",a:"United States",y:1934,hg:7,ag:1},{h:"Czechoslovakia",a:"Romania",y:1934,hg:2,ag:1},{h:"Sweden",a:"Argentina",y:1934,hg:3,ag:2},{h:"Austria",a:"France",y:1934,hg:3,ag:2},{h:"Germany",a:"Belgium",y:1934,hg:5,ag:2},{h:"Austria",a:"Hungary",y:1934,hg:2,ag:1},{h:"Italy",a:"Spain",y:1934,hg:1,ag:1},{h:"Germany",a:"Sweden",y:1934,hg:2,ag:1},{h:"Czechoslovakia",a:"Switzerland",y:1934,hg:3,ag:2},
+{h:"Italy",a:"Spain",y:1934,hg:1,ag:0},{h:"Italy",a:"Austria",y:1934,hg:1,ag:0},{h:"Czechoslovakia",a:"Germany",y:1934,hg:3,ag:1},{h:"Germany",a:"Austria",y:1934,hg:3,ag:2},{h:"Italy",a:"Czechoslovakia",y:1934,hg:2,ag:1},{h:"Switzerland",a:"Germany",y:1938,hg:1,ag:1},{h:"Hungary",a:"Dutch East Indies",y:1938,hg:6,ag:0},{h:"Cuba",a:"Romania",y:1938,hg:3,ag:3},{h:"France",a:"Belgium",y:1938,hg:3,ag:1},{h:"Italy",a:"Norway",y:1938,hg:2,ag:1},
+{h:"Brazil",a:"Poland",y:1938,hg:6,ag:5},{h:"Czechoslovakia",a:"Netherlands",y:1938,hg:3,ag:0},{h:"Switzerland",a:"Germany",y:1938,hg:4,ag:2},{h:"Cuba",a:"Romania",y:1938,hg:2,ag:1},{h:"Hungary",a:"Switzerland",y:1938,hg:2,ag:0},{h:"Sweden",a:"Cuba",y:1938,hg:8,ag:0},{h:"Italy",a:"France",y:1938,hg:3,ag:1},{h:"Brazil",a:"Czechoslovakia",y:1938,hg:1,ag:1},{h:"Brazil",a:"Czechoslovakia",y:1938,hg:2,ag:1},{h:"Hungary",a:"Sweden",y:1938,hg:5,ag:1},
+{h:"Italy",a:"Brazil",y:1938,hg:2,ag:1},{h:"Brazil",a:"Sweden",y:1938,hg:4,ag:2},{h:"Italy",a:"Hungary",y:1938,hg:4,ag:2},{h:"Brazil",a:"Mexico",y:1950,hg:4,ag:0},{h:"Yugoslavia",a:"Switzerland",y:1950,hg:3,ag:0},{h:"Brazil",a:"Switzerland",y:1950,hg:2,ag:2},{h:"Yugoslavia",a:"Mexico",y:1950,hg:4,ag:1},{h:"Brazil",a:"Yugoslavia",y:1950,hg:2,ag:0},{h:"Switzerland",a:"Mexico",y:1950,hg:2,ag:1},{h:"England",a:"Chile",y:1950,hg:2,ag:0},
+{h:"Spain",a:"United States",y:1950,hg:3,ag:1},{h:"Spain",a:"Chile",y:1950,hg:2,ag:0},{h:"United States",a:"England",y:1950,hg:1,ag:0},{h:"Spain",a:"England",y:1950,hg:1,ag:0},{h:"Chile",a:"United States",y:1950,hg:5,ag:2},{h:"Sweden",a:"Italy",y:1950,hg:3,ag:2},{h:"Sweden",a:"Paraguay",y:1950,hg:2,ag:2},{h:"Italy",a:"Paraguay",y:1950,hg:2,ag:0},{h:"Uruguay",a:"Bolivia",y:1950,hg:8,ag:0},{h:"Uruguay",a:"Spain",y:1950,hg:2,ag:2},
+{h:"Brazil",a:"Sweden",y:1950,hg:7,ag:1},{h:"Brazil",a:"Spain",y:1950,hg:6,ag:1},{h:"Uruguay",a:"Sweden",y:1950,hg:3,ag:2},{h:"Sweden",a:"Spain",y:1950,hg:3,ag:1},{h:"Uruguay",a:"Brazil",y:1950,hg:2,ag:1},{h:"Brazil",a:"Mexico",y:1954,hg:5,ag:0},{h:"Yugoslavia",a:"France",y:1954,hg:1,ag:0},{h:"Brazil",a:"Yugoslavia",y:1954,hg:1,ag:1},{h:"France",a:"Mexico",y:1954,hg:3,ag:2},{h:"West Germany",a:"Turkey",y:1954,hg:4,ag:1},
+{h:"Hungary",a:"South Korea",y:1954,hg:9,ag:0},{h:"Hungary",a:"West Germany",y:1954,hg:8,ag:3},{h:"Turkey",a:"South Korea",y:1954,hg:7,ag:0},{h:"West Germany",a:"Turkey",y:1954,hg:7,ag:2},{h:"Uruguay",a:"Czechoslovakia",y:1954,hg:2,ag:0},{h:"Austria",a:"Scotland",y:1954,hg:1,ag:0},{h:"Uruguay",a:"Scotland",y:1954,hg:7,ag:0},{h:"Austria",a:"Czechoslovakia",y:1954,hg:5,ag:0},{h:"Switzerland",a:"Italy",y:1954,hg:2,ag:1},{h:"England",a:"Belgium",y:1954,hg:4,ag:4},
+{h:"Italy",a:"Belgium",y:1954,hg:4,ag:1},{h:"England",a:"Switzerland",y:1954,hg:2,ag:0},{h:"Switzerland",a:"Italy",y:1954,hg:4,ag:1},{h:"Austria",a:"Switzerland",y:1954,hg:7,ag:5},{h:"Uruguay",a:"England",y:1954,hg:4,ag:2},{h:"West Germany",a:"Yugoslavia",y:1954,hg:2,ag:0},{h:"Hungary",a:"Brazil",y:1954,hg:4,ag:2},{h:"West Germany",a:"Austria",y:1954,hg:6,ag:1},{h:"Hungary",a:"Uruguay",y:1954,hg:4,ag:2},{h:"Austria",a:"Uruguay",y:1954,hg:3,ag:1},
+{h:"West Germany",a:"Hungary",y:1954,hg:3,ag:2},{h:"Argentina",a:"West Germany",y:1958,hg:1,ag:3},{h:"Northern Ireland",a:"Czechoslovakia",y:1958,hg:1,ag:0},{h:"West Germany",a:"Czechoslovakia",y:1958,hg:2,ag:2},{h:"Argentina",a:"Northern Ireland",y:1958,hg:3,ag:1},{h:"West Germany",a:"Northern Ireland",y:1958,hg:2,ag:2},{h:"Czechoslovakia",a:"Argentina",y:1958,hg:6,ag:1},{h:"Northern Ireland",a:"Czechoslovakia",y:1958,hg:2,ag:1},{h:"France",a:"Paraguay",y:1958,hg:7,ag:3},{h:"Yugoslavia",a:"Scotland",y:1958,hg:1,ag:1},{h:"Yugoslavia",a:"France",y:1958,hg:3,ag:2},
+{h:"Paraguay",a:"Scotland",y:1958,hg:3,ag:2},{h:"France",a:"Scotland",y:1958,hg:2,ag:1},{h:"Paraguay",a:"Yugoslavia",y:1958,hg:3,ag:3},{h:"Sweden",a:"Mexico",y:1958,hg:3,ag:0},{h:"Hungary",a:"Wales",y:1958,hg:1,ag:1},{h:"Mexico",a:"Wales",y:1958,hg:1,ag:1},{h:"Sweden",a:"Hungary",y:1958,hg:2,ag:1},{h:"Sweden",a:"Wales",y:1958,hg:0,ag:0},{h:"Hungary",a:"Mexico",y:1958,hg:4,ag:0},{h:"Wales",a:"Hungary",y:1958,hg:2,ag:1},
+{h:"Brazil",a:"Austria",y:1958,hg:3,ag:0},{h:"Soviet Union",a:"England",y:1958,hg:2,ag:2},{h:"Brazil",a:"England",y:1958,hg:0,ag:0},{h:"Soviet Union",a:"Austria",y:1958,hg:2,ag:0},{h:"England",a:"Austria",y:1958,hg:2,ag:2},{h:"Brazil",a:"Soviet Union",y:1958,hg:2,ag:0},{h:"Soviet Union",a:"England",y:1958,hg:1,ag:0},{h:"Brazil",a:"Wales",y:1958,hg:1,ag:0},{h:"France",a:"Northern Ireland",y:1958,hg:4,ag:0},{h:"Sweden",a:"Soviet Union",y:1958,hg:2,ag:0},
+{h:"West Germany",a:"Yugoslavia",y:1958,hg:1,ag:0},{h:"Brazil",a:"France",y:1958,hg:5,ag:2},{h:"Sweden",a:"West Germany",y:1958,hg:3,ag:1},{h:"France",a:"West Germany",y:1958,hg:6,ag:3},{h:"Brazil",a:"Sweden",y:1958,hg:5,ag:2},{h:"Uruguay",a:"Colombia",y:1962,hg:2,ag:1},{h:"Soviet Union",a:"Yugoslavia",y:1962,hg:2,ag:0},{h:"Yugoslavia",a:"Uruguay",y:1962,hg:3,ag:1},{h:"Soviet Union",a:"Colombia",y:1962,hg:4,ag:4},{h:"Soviet Union",a:"Uruguay",y:1962,hg:2,ag:1},
+{h:"Yugoslavia",a:"Colombia",y:1962,hg:5,ag:0},{h:"Chile",a:"Switzerland",y:1962,hg:3,ag:1},{h:"West Germany",a:"Italy",y:1962,hg:0,ag:0},{h:"Chile",a:"Italy",y:1962,hg:2,ag:0},{h:"West Germany",a:"Switzerland",y:1962,hg:2,ag:1},{h:"West Germany",a:"Chile",y:1962,hg:2,ag:0},{h:"Italy",a:"Switzerland",y:1962,hg:3,ag:0},{h:"Brazil",a:"Mexico",y:1962,hg:2,ag:0},{h:"Czechoslovakia",a:"Spain",y:1962,hg:1,ag:0},{h:"Brazil",a:"Czechoslovakia",y:1962,hg:0,ag:0},
+{h:"Spain",a:"Mexico",y:1962,hg:1,ag:0},{h:"Brazil",a:"Spain",y:1962,hg:2,ag:1},{h:"Mexico",a:"Czechoslovakia",y:1962,hg:3,ag:1},{h:"Argentina",a:"Bulgaria",y:1962,hg:1,ag:0},{h:"Hungary",a:"England",y:1962,hg:2,ag:1},{h:"England",a:"Argentina",y:1962,hg:3,ag:1},{h:"Hungary",a:"Bulgaria",y:1962,hg:6,ag:1},{h:"Hungary",a:"Argentina",y:1962,hg:0,ag:0},{h:"England",a:"Bulgaria",y:1962,hg:0,ag:0},{h:"Chile",a:"Soviet Union",y:1962,hg:2,ag:1},
+{h:"Czechoslovakia",a:"Hungary",y:1962,hg:1,ag:0},{h:"Brazil",a:"England",y:1962,hg:3,ag:1},{h:"Yugoslavia",a:"West Germany",y:1962,hg:1,ag:0},{h:"Czechoslovakia",a:"Yugoslavia",y:1962,hg:3,ag:1},{h:"Brazil",a:"Chile",y:1962,hg:4,ag:2},{h:"Chile",a:"Yugoslavia",y:1962,hg:1,ag:0},{h:"Brazil",a:"Czechoslovakia",y:1962,hg:3,ag:1},{h:"England",a:"Uruguay",y:1966,hg:0,ag:0},{h:"France",a:"Mexico",y:1966,hg:1,ag:1},{h:"Uruguay",a:"France",y:1966,hg:2,ag:1},
+{h:"England",a:"Mexico",y:1966,hg:2,ag:0},{h:"Mexico",a:"Uruguay",y:1966,hg:0,ag:0},{h:"England",a:"France",y:1966,hg:2,ag:0},{h:"West Germany",a:"Switzerland",y:1966,hg:5,ag:0},{h:"Argentina",a:"Spain",y:1966,hg:2,ag:1},{h:"Spain",a:"Switzerland",y:1966,hg:2,ag:1},{h:"Argentina",a:"West Germany",y:1966,hg:0,ag:0},{h:"Argentina",a:"Switzerland",y:1966,hg:2,ag:0},{h:"West Germany",a:"Spain",y:1966,hg:2,ag:1},{h:"Brazil",a:"Bulgaria",y:1966,hg:2,ag:0},
+{h:"Portugal",a:"Hungary",y:1966,hg:3,ag:1},{h:"Hungary",a:"Brazil",y:1966,hg:3,ag:1},{h:"Portugal",a:"Bulgaria",y:1966,hg:3,ag:0},{h:"Portugal",a:"Brazil",y:1966,hg:3,ag:1},{h:"Hungary",a:"Bulgaria",y:1966,hg:3,ag:1},{h:"Soviet Union",a:"North Korea",y:1966,hg:3,ag:0},{h:"Italy",a:"Chile",y:1966,hg:2,ag:0},{h:"Chile",a:"North Korea",y:1966,hg:1,ag:1},{h:"Soviet Union",a:"Italy",y:1966,hg:1,ag:0},{h:"North Korea",a:"Italy",y:1966,hg:1,ag:0},
+{h:"Soviet Union",a:"Chile",y:1966,hg:2,ag:1},{h:"England",a:"Argentina",y:1966,hg:1,ag:0},{h:"West Germany",a:"Uruguay",y:1966,hg:4,ag:0},{h:"Soviet Union",a:"Hungary",y:1966,hg:2,ag:1},{h:"Portugal",a:"North Korea",y:1966,hg:5,ag:3},{h:"West Germany",a:"Soviet Union",y:1966,hg:2,ag:1},{h:"England",a:"Portugal",y:1966,hg:2,ag:1},{h:"Portugal",a:"Soviet Union",y:1966,hg:2,ag:1},{h:"England",a:"West Germany",y:1966,hg:4,ag:2},{h:"Mexico",a:"Soviet Union",y:1970,hg:0,ag:0},
+{h:"Belgium",a:"El Salvador",y:1970,hg:3,ag:0},{h:"Soviet Union",a:"Belgium",y:1970,hg:4,ag:1},{h:"Mexico",a:"El Salvador",y:1970,hg:4,ag:0},{h:"Soviet Union",a:"El Salvador",y:1970,hg:2,ag:0},{h:"Mexico",a:"Belgium",y:1970,hg:1,ag:0},{h:"Uruguay",a:"Israel",y:1970,hg:2,ag:0},{h:"Italy",a:"Sweden",y:1970,hg:1,ag:0},{h:"Uruguay",a:"Italy",y:1970,hg:0,ag:0},{h:"Sweden",a:"Israel",y:1970,hg:1,ag:1},{h:"Sweden",a:"Uruguay",y:1970,hg:1,ag:0},
+{h:"Italy",a:"Israel",y:1970,hg:0,ag:0},{h:"England",a:"Romania",y:1970,hg:1,ag:0},{h:"Brazil",a:"Czechoslovakia",y:1970,hg:4,ag:1},{h:"Romania",a:"Czechoslovakia",y:1970,hg:2,ag:1},{h:"Brazil",a:"England",y:1970,hg:1,ag:0},{h:"Brazil",a:"Romania",y:1970,hg:3,ag:2},{h:"England",a:"Czechoslovakia",y:1970,hg:1,ag:0},{h:"Peru",a:"Bulgaria",y:1970,hg:3,ag:2},{h:"West Germany",a:"Morocco",y:1970,hg:2,ag:1},{h:"Peru",a:"Morocco",y:1970,hg:3,ag:0},
+{h:"West Germany",a:"Bulgaria",y:1970,hg:5,ag:2},{h:"West Germany",a:"Peru",y:1970,hg:3,ag:1},{h:"Bulgaria",a:"Morocco",y:1970,hg:1,ag:1},{h:"Soviet Union",a:"Uruguay",y:1970,hg:0,ag:1},{h:"Italy",a:"Mexico",y:1970,hg:4,ag:1},{h:"Brazil",a:"Peru",y:1970,hg:4,ag:2},{h:"West Germany",a:"England",y:1970,hg:3,ag:2},{h:"Brazil",a:"Uruguay",y:1970,hg:3,ag:1},{h:"Italy",a:"West Germany",y:1970,hg:4,ag:3},{h:"West Germany",a:"Uruguay",y:1970,hg:1,ag:0},
+{h:"Brazil",a:"Italy",y:1970,hg:4,ag:1},{h:"West Germany",a:"Chile",y:1974,hg:1,ag:0},{h:"East Germany",a:"Australia",y:1974,hg:2,ag:0},{h:"Australia",a:"West Germany",y:1974,hg:0,ag:3},{h:"Chile",a:"East Germany",y:1974,hg:1,ag:1},{h:"Australia",a:"Chile",y:1974,hg:0,ag:0},{h:"East Germany",a:"West Germany",y:1974,hg:1,ag:0},{h:"Brazil",a:"Yugoslavia",y:1974,hg:0,ag:0},{h:"Zaire",a:"Scotland",y:1974,hg:0,ag:2},{h:"Yugoslavia",a:"Zaire",y:1974,hg:9,ag:0},{h:"Scotland",a:"Brazil",y:1974,hg:0,ag:0},
+{h:"Scotland",a:"Yugoslavia",y:1974,hg:1,ag:1},{h:"Zaire",a:"Brazil",y:1974,hg:0,ag:3},{h:"Uruguay",a:"Netherlands",y:1974,hg:0,ag:2},{h:"Sweden",a:"Bulgaria",y:1974,hg:0,ag:0},{h:"Bulgaria",a:"Uruguay",y:1974,hg:1,ag:1},{h:"Netherlands",a:"Sweden",y:1974,hg:0,ag:0},{h:"Bulgaria",a:"Netherlands",y:1974,hg:1,ag:4},{h:"Sweden",a:"Uruguay",y:1974,hg:3,ag:0},{h:"Italy",a:"Haiti",y:1974,hg:3,ag:1},{h:"Poland",a:"Argentina",y:1974,hg:3,ag:2},
+{h:"Argentina",a:"Italy",y:1974,hg:1,ag:1},{h:"Haiti",a:"Poland",y:1974,hg:0,ag:7},{h:"Argentina",a:"Haiti",y:1974,hg:4,ag:1},{h:"Poland",a:"Italy",y:1974,hg:2,ag:1},{h:"Netherlands",a:"Argentina",y:1974,hg:4,ag:0},{h:"Brazil",a:"East Germany",y:1974,hg:1,ag:0},{h:"Argentina",a:"Brazil",y:1974,hg:1,ag:2},{h:"East Germany",a:"Netherlands",y:1974,hg:0,ag:2},{h:"Argentina",a:"East Germany",y:1974,hg:1,ag:1},{h:"Netherlands",a:"Brazil",y:1974,hg:2,ag:0},
+{h:"Yugoslavia",a:"West Germany",y:1974,hg:0,ag:2},{h:"Sweden",a:"Poland",y:1974,hg:0,ag:1},{h:"Poland",a:"Yugoslavia",y:1974,hg:2,ag:1},{h:"West Germany",a:"Sweden",y:1974,hg:4,ag:2},{h:"Poland",a:"West Germany",y:1974,hg:0,ag:1},{h:"Sweden",a:"Yugoslavia",y:1974,hg:2,ag:1},{h:"Brazil",a:"Poland",y:1974,hg:0,ag:1},{h:"Netherlands",a:"West Germany",y:1974,hg:1,ag:2},{h:"Italy",a:"France",y:1978,hg:2,ag:1},{h:"Argentina",a:"Hungary",y:1978,hg:2,ag:1},
+{h:"Italy",a:"Hungary",y:1978,hg:3,ag:1},{h:"Argentina",a:"France",y:1978,hg:2,ag:1},{h:"France",a:"Hungary",y:1978,hg:3,ag:1},{h:"Argentina",a:"Italy",y:1978,hg:0,ag:1},{h:"West Germany",a:"Poland",y:1978,hg:0,ag:0},{h:"Tunisia",a:"Mexico",y:1978,hg:3,ag:1},{h:"West Germany",a:"Mexico",y:1978,hg:6,ag:0},{h:"Poland",a:"Tunisia",y:1978,hg:1,ag:0},{h:"West Germany",a:"Tunisia",y:1978,hg:0,ag:0},{h:"Poland",a:"Mexico",y:1978,hg:3,ag:1},
+{h:"Austria",a:"Spain",y:1978,hg:2,ag:1},{h:"Brazil",a:"Sweden",y:1978,hg:1,ag:1},{h:"Austria",a:"Sweden",y:1978,hg:1,ag:0},{h:"Brazil",a:"Spain",y:1978,hg:0,ag:0},{h:"Spain",a:"Sweden",y:1978,hg:1,ag:0},{h:"Brazil",a:"Austria",y:1978,hg:1,ag:0},{h:"Peru",a:"Scotland",y:1978,hg:3,ag:1},{h:"Netherlands",a:"Iran",y:1978,hg:3,ag:0},{h:"Scotland",a:"Iran",y:1978,hg:1,ag:1},{h:"Netherlands",a:"Peru",y:1978,hg:0,ag:0},
+{h:"Peru",a:"Iran",y:1978,hg:4,ag:1},{h:"Scotland",a:"Netherlands",y:1978,hg:3,ag:2},{h:"Austria",a:"Netherlands",y:1978,hg:1,ag:5},{h:"Italy",a:"West Germany",y:1978,hg:0,ag:0},{h:"Netherlands",a:"West Germany",y:1978,hg:2,ag:2},{h:"Italy",a:"Austria",y:1978,hg:1,ag:0},{h:"Austria",a:"West Germany",y:1978,hg:3,ag:2},{h:"Italy",a:"Netherlands",y:1978,hg:1,ag:2},{h:"Brazil",a:"Peru",y:1978,hg:3,ag:0},{h:"Argentina",a:"Poland",y:1978,hg:2,ag:0},
+{h:"Peru",a:"Poland",y:1978,hg:0,ag:1},{h:"Argentina",a:"Brazil",y:1978,hg:0,ag:0},{h:"Brazil",a:"Poland",y:1978,hg:3,ag:1},{h:"Argentina",a:"Peru",y:1978,hg:6,ag:0},{h:"Brazil",a:"Italy",y:1978,hg:2,ag:1},{h:"Argentina",a:"Netherlands",y:1978,hg:3,ag:1},{h:"Italy",a:"Poland",y:1982,hg:0,ag:0},{h:"Peru",a:"Cameroon",y:1982,hg:0,ag:0},{h:"Italy",a:"Peru",y:1982,hg:1,ag:1},{h:"Poland",a:"Cameroon",y:1982,hg:0,ag:0},
+{h:"Poland",a:"Peru",y:1982,hg:5,ag:1},{h:"Italy",a:"Cameroon",y:1982,hg:1,ag:1},{h:"West Germany",a:"Algeria",y:1982,hg:1,ag:2},{h:"Chile",a:"Austria",y:1982,hg:0,ag:1},{h:"West Germany",a:"Chile",y:1982,hg:4,ag:1},{h:"Algeria",a:"Austria",y:1982,hg:0,ag:2},{h:"Algeria",a:"Chile",y:1982,hg:3,ag:2},{h:"West Germany",a:"Austria",y:1982,hg:1,ag:0},{h:"Argentina",a:"Belgium",y:1982,hg:0,ag:1},{h:"Hungary",a:"El Salvador",y:1982,hg:10,ag:1},
+{h:"Argentina",a:"Hungary",y:1982,hg:4,ag:1},{h:"Belgium",a:"El Salvador",y:1982,hg:1,ag:0},{h:"Belgium",a:"Hungary",y:1982,hg:1,ag:1},{h:"Argentina",a:"El Salvador",y:1982,hg:2,ag:0},{h:"England",a:"France",y:1982,hg:3,ag:1},{h:"Czechoslovakia",a:"Kuwait",y:1982,hg:1,ag:1},{h:"England",a:"Czechoslovakia",y:1982,hg:2,ag:0},{h:"France",a:"Kuwait",y:1982,hg:4,ag:1},{h:"France",a:"Czechoslovakia",y:1982,hg:1,ag:1},{h:"England",a:"Kuwait",y:1982,hg:1,ag:0},
+{h:"Spain",a:"Honduras",y:1982,hg:1,ag:1},{h:"Yugoslavia",a:"Northern Ireland",y:1982,hg:0,ag:0},{h:"Spain",a:"Yugoslavia",y:1982,hg:2,ag:1},{h:"Honduras",a:"Northern Ireland",y:1982,hg:1,ag:1},{h:"Honduras",a:"Yugoslavia",y:1982,hg:0,ag:1},{h:"Spain",a:"Northern Ireland",y:1982,hg:0,ag:1},{h:"Brazil",a:"Soviet Union",y:1982,hg:2,ag:1},{h:"Scotland",a:"New Zealand",y:1982,hg:5,ag:2},{h:"Brazil",a:"Scotland",y:1982,hg:4,ag:1},{h:"Soviet Union",a:"New Zealand",y:1982,hg:3,ag:0},
+{h:"Soviet Union",a:"Scotland",y:1982,hg:2,ag:2},{h:"Brazil",a:"New Zealand",y:1982,hg:4,ag:0},{h:"Poland",a:"Belgium",y:1982,hg:3,ag:0},{h:"Belgium",a:"Soviet Union",y:1982,hg:0,ag:1},{h:"Soviet Union",a:"Poland",y:1982,hg:0,ag:0},{h:"West Germany",a:"England",y:1982,hg:0,ag:0},{h:"West Germany",a:"Spain",y:1982,hg:2,ag:1},{h:"Spain",a:"England",y:1982,hg:0,ag:0},{h:"Italy",a:"Argentina",y:1982,hg:2,ag:1},{h:"Argentina",a:"Brazil",y:1982,hg:1,ag:3},
+{h:"Italy",a:"Brazil",y:1982,hg:3,ag:2},{h:"Austria",a:"France",y:1982,hg:0,ag:1},{h:"Austria",a:"Northern Ireland",y:1982,hg:2,ag:2},{h:"France",a:"Northern Ireland",y:1982,hg:4,ag:1},{h:"Poland",a:"Italy",y:1982,hg:0,ag:2},{h:"West Germany",a:"France",y:1982,hg:3,ag:3},{h:"Poland",a:"France",y:1982,hg:3,ag:2},{h:"Italy",a:"West Germany",y:1982,hg:3,ag:1},{h:"Bulgaria",a:"Italy",y:1986,hg:1,ag:1},{h:"Argentina",a:"South Korea",y:1986,hg:3,ag:1},
+{h:"Italy",a:"Argentina",y:1986,hg:1,ag:1},{h:"South Korea",a:"Bulgaria",y:1986,hg:1,ag:1},{h:"South Korea",a:"Italy",y:1986,hg:2,ag:3},{h:"Argentina",a:"Bulgaria",y:1986,hg:2,ag:0},{h:"Belgium",a:"Mexico",y:1986,hg:1,ag:2},{h:"Paraguay",a:"Iraq",y:1986,hg:1,ag:0},{h:"Mexico",a:"Paraguay",y:1986,hg:1,ag:1},{h:"Iraq",a:"Belgium",y:1986,hg:1,ag:2},{h:"Paraguay",a:"Belgium",y:1986,hg:2,ag:2},{h:"Iraq",a:"Mexico",y:1986,hg:0,ag:1},
+{h:"Canada",a:"France",y:1986,hg:0,ag:1},{h:"Soviet Union",a:"Hungary",y:1986,hg:6,ag:0},{h:"France",a:"Soviet Union",y:1986,hg:1,ag:1},{h:"Hungary",a:"Canada",y:1986,hg:2,ag:0},{h:"Hungary",a:"France",y:1986,hg:0,ag:3},{h:"Soviet Union",a:"Canada",y:1986,hg:2,ag:0},{h:"Spain",a:"Brazil",y:1986,hg:0,ag:1},{h:"Algeria",a:"Northern Ireland",y:1986,hg:1,ag:1},{h:"Brazil",a:"Algeria",y:1986,hg:1,ag:0},{h:"Northern Ireland",a:"Spain",y:1986,hg:1,ag:2},
+{h:"Northern Ireland",a:"Brazil",y:1986,hg:0,ag:3},{h:"Algeria",a:"Spain",y:1986,hg:0,ag:3},{h:"Uruguay",a:"West Germany",y:1986,hg:1,ag:1},{h:"Scotland",a:"Denmark",y:1986,hg:0,ag:1},{h:"West Germany",a:"Scotland",y:1986,hg:2,ag:1},{h:"Denmark",a:"Uruguay",y:1986,hg:6,ag:1},{h:"Denmark",a:"West Germany",y:1986,hg:2,ag:0},{h:"Scotland",a:"Uruguay",y:1986,hg:0,ag:0},{h:"Morocco",a:"Poland",y:1986,hg:0,ag:0},{h:"Portugal",a:"England",y:1986,hg:1,ag:0},
+{h:"England",a:"Morocco",y:1986,hg:0,ag:0},{h:"Poland",a:"Portugal",y:1986,hg:1,ag:0},{h:"England",a:"Poland",y:1986,hg:3,ag:0},{h:"Portugal",a:"Morocco",y:1986,hg:1,ag:3},{h:"Mexico",a:"Bulgaria",y:1986,hg:2,ag:0},{h:"Soviet Union",a:"Belgium",y:1986,hg:3,ag:4},{h:"Brazil",a:"Poland",y:1986,hg:4,ag:0},{h:"Argentina",a:"Uruguay",y:1986,hg:1,ag:0},{h:"Italy",a:"France",y:1986,hg:0,ag:2},{h:"Morocco",a:"West Germany",y:1986,hg:0,ag:1},
+{h:"England",a:"Paraguay",y:1986,hg:3,ag:0},{h:"Denmark",a:"Spain",y:1986,hg:1,ag:5},{h:"Brazil",a:"France",y:1986,hg:1,ag:1},{h:"West Germany",a:"Mexico",y:1986,hg:0,ag:0},{h:"Argentina",a:"England",y:1986,hg:2,ag:1},{h:"Spain",a:"Belgium",y:1986,hg:1,ag:1},{h:"France",a:"West Germany",y:1986,hg:0,ag:2},{h:"Argentina",a:"Belgium",y:1986,hg:2,ag:0},{h:"Belgium",a:"France",y:1986,hg:2,ag:4},{h:"Argentina",a:"West Germany",y:1986,hg:3,ag:2},
+{h:"Cameroon",a:"Colombia",y:1990,hg:2,ag:1},{h:"Czechoslovakia",a:"Costa Rica",y:1990,hg:4,ag:1},{h:"Brazil",a:"Argentina",y:1990,hg:0,ag:1},{h:"West Germany",a:"Netherlands",y:1990,hg:2,ag:1},{h:"Republic of Ireland",a:"Romania",y:1990,hg:0,ag:0},{h:"Italy",a:"Uruguay",y:1990,hg:2,ag:0},{h:"Spain",a:"Yugoslavia",y:1990,hg:1,ag:2},{h:"England",a:"Belgium",y:1990,hg:1,ag:0},{h:"Argentina",a:"Yugoslavia",y:1990,hg:0,ag:0},{h:"Republic of Ireland",a:"Italy",y:1990,hg:0,ag:1},
+{h:"Czechoslovakia",a:"West Germany",y:1990,hg:0,ag:1},{h:"Cameroon",a:"England",y:1990,hg:2,ag:3},{h:"Argentina",a:"Italy",y:1990,hg:1,ag:1},{h:"West Germany",a:"England",y:1990,hg:1,ag:1},{h:"Italy",a:"England",y:1990,hg:2,ag:1},{h:"West Germany",a:"Argentina",y:1990,hg:1,ag:0},{h:"United States",a:"Switzerland",y:1994,hg:1,ag:1},{h:"Colombia",a:"Romania",y:1994,hg:1,ag:3},{h:"Romania",a:"Switzerland",y:1994,hg:1,ag:4},{h:"United States",a:"Colombia",y:1994,hg:2,ag:1},
+{h:"Switzerland",a:"Colombia",y:1994,hg:0,ag:2},{h:"United States",a:"Romania",y:1994,hg:0,ag:1},{h:"Cameroon",a:"Sweden",y:1994,hg:2,ag:2},{h:"Brazil",a:"Russia",y:1994,hg:2,ag:0},{h:"Brazil",a:"Cameroon",y:1994,hg:3,ag:0},{h:"Sweden",a:"Russia",y:1994,hg:3,ag:1},{h:"Russia",a:"Cameroon",y:1994,hg:6,ag:1},{h:"Brazil",a:"Sweden",y:1994,hg:1,ag:1},{h:"Germany",a:"Bolivia",y:1994,hg:1,ag:0},{h:"Spain",a:"South Korea",y:1994,hg:2,ag:2},
+{h:"Germany",a:"Spain",y:1994,hg:1,ag:1},{h:"South Korea",a:"Bolivia",y:1994,hg:0,ag:0},{h:"Bolivia",a:"Spain",y:1994,hg:1,ag:3},{h:"Germany",a:"South Korea",y:1994,hg:3,ag:2},{h:"Argentina",a:"Greece",y:1994,hg:4,ag:0},{h:"Nigeria",a:"Bulgaria",y:1994,hg:3,ag:0},{h:"Argentina",a:"Nigeria",y:1994,hg:2,ag:1},{h:"Bulgaria",a:"Greece",y:1994,hg:4,ag:0},{h:"Argentina",a:"Bulgaria",y:1994,hg:0,ag:2},{h:"Greece",a:"Nigeria",y:1994,hg:0,ag:2},
+{h:"Italy",a:"Republic of Ireland",y:1994,hg:0,ag:1},{h:"Norway",a:"Mexico",y:1994,hg:1,ag:0},{h:"Italy",a:"Norway",y:1994,hg:1,ag:0},{h:"Mexico",a:"Republic of Ireland",y:1994,hg:2,ag:1},{h:"Italy",a:"Mexico",y:1994,hg:1,ag:1},{h:"Republic of Ireland",a:"Norway",y:1994,hg:0,ag:0},{h:"Belgium",a:"Morocco",y:1994,hg:1,ag:0},{h:"Netherlands",a:"Saudi Arabia",y:1994,hg:2,ag:1},{h:"Belgium",a:"Netherlands",y:1994,hg:1,ag:0},{h:"Saudi Arabia",a:"Morocco",y:1994,hg:2,ag:1},
+{h:"Belgium",a:"Saudi Arabia",y:1994,hg:0,ag:1},{h:"Morocco",a:"Netherlands",y:1994,hg:1,ag:2},{h:"Germany",a:"Belgium",y:1994,hg:3,ag:2},{h:"Spain",a:"Switzerland",y:1994,hg:3,ag:0},{h:"Saudi Arabia",a:"Sweden",y:1994,hg:1,ag:3},{h:"Romania",a:"Argentina",y:1994,hg:3,ag:2},{h:"Netherlands",a:"Republic of Ireland",y:1994,hg:2,ag:0},{h:"Brazil",a:"United States",y:1994,hg:1,ag:0},{h:"Nigeria",a:"Italy",y:1994,hg:1,ag:2},{h:"Mexico",a:"Bulgaria",y:1994,hg:1,ag:1},
+{h:"Italy",a:"Spain",y:1994,hg:2,ag:1},{h:"Netherlands",a:"Brazil",y:1994,hg:2,ag:3},{h:"Bulgaria",a:"Germany",y:1994,hg:2,ag:1},{h:"Romania",a:"Sweden",y:1994,hg:2,ag:2},{h:"Bulgaria",a:"Italy",y:1994,hg:1,ag:2},{h:"Sweden",a:"Brazil",y:1994,hg:0,ag:1},{h:"Sweden",a:"Bulgaria",y:1994,hg:4,ag:0},{h:"Brazil",a:"Italy",y:1994,hg:0,ag:0},{h:"Brazil",a:"Scotland",y:1998,hg:2,ag:1},{h:"Morocco",a:"Norway",y:1998,hg:2,ag:2},
+{h:"Scotland",a:"Norway",y:1998,hg:1,ag:1},{h:"Brazil",a:"Morocco",y:1998,hg:3,ag:0},{h:"Scotland",a:"Morocco",y:1998,hg:0,ag:3},{h:"Brazil",a:"Norway",y:1998,hg:1,ag:2},{h:"Italy",a:"Chile",y:1998,hg:2,ag:2},{h:"Cameroon",a:"Austria",y:1998,hg:1,ag:1},{h:"Chile",a:"Austria",y:1998,hg:1,ag:1},{h:"Italy",a:"Cameroon",y:1998,hg:3,ag:0},{h:"Italy",a:"Austria",y:1998,hg:2,ag:1},{h:"Chile",a:"Cameroon",y:1998,hg:1,ag:1},
+{h:"Saudi Arabia",a:"Denmark",y:1998,hg:0,ag:1},{h:"France",a:"South Africa",y:1998,hg:3,ag:0},{h:"South Africa",a:"Denmark",y:1998,hg:1,ag:1},{h:"France",a:"Saudi Arabia",y:1998,hg:4,ag:0},{h:"France",a:"Denmark",y:1998,hg:2,ag:1},{h:"South Africa",a:"Saudi Arabia",y:1998,hg:2,ag:2},{h:"Paraguay",a:"Bulgaria",y:1998,hg:0,ag:0},{h:"Spain",a:"Nigeria",y:1998,hg:2,ag:3},{h:"Nigeria",a:"Bulgaria",y:1998,hg:1,ag:0},{h:"Spain",a:"Paraguay",y:1998,hg:0,ag:0},
+{h:"Nigeria",a:"Paraguay",y:1998,hg:1,ag:3},{h:"Spain",a:"Bulgaria",y:1998,hg:6,ag:1},{h:"South Korea",a:"Mexico",y:1998,hg:1,ag:3},{h:"Netherlands",a:"Belgium",y:1998,hg:0,ag:0},{h:"Belgium",a:"Mexico",y:1998,hg:2,ag:2},{h:"Netherlands",a:"South Korea",y:1998,hg:5,ag:0},{h:"Netherlands",a:"Mexico",y:1998,hg:2,ag:2},{h:"Belgium",a:"South Korea",y:1998,hg:1,ag:1},{h:"FR Yugoslavia",a:"Iran",y:1998,hg:1,ag:0},{h:"Germany",a:"United States",y:1998,hg:2,ag:0},
+{h:"Germany",a:"FR Yugoslavia",y:1998,hg:2,ag:2},{h:"United States",a:"Iran",y:1998,hg:1,ag:2},{h:"Germany",a:"Iran",y:1998,hg:2,ag:0},{h:"United States",a:"FR Yugoslavia",y:1998,hg:0,ag:1},{h:"England",a:"Tunisia",y:1998,hg:2,ag:0},{h:"Romania",a:"Colombia",y:1998,hg:1,ag:0},{h:"Colombia",a:"Tunisia",y:1998,hg:1,ag:0},{h:"Romania",a:"England",y:1998,hg:2,ag:1},{h:"Colombia",a:"England",y:1998,hg:0,ag:2},{h:"Romania",a:"Tunisia",y:1998,hg:1,ag:1},
+{h:"Argentina",a:"Japan",y:1998,hg:1,ag:0},{h:"Jamaica",a:"Croatia",y:1998,hg:1,ag:3},{h:"Japan",a:"Croatia",y:1998,hg:0,ag:1},{h:"Argentina",a:"Jamaica",y:1998,hg:5,ag:0},{h:"Argentina",a:"Croatia",y:1998,hg:1,ag:0},{h:"Japan",a:"Jamaica",y:1998,hg:1,ag:2},{h:"Italy",a:"Norway",y:1998,hg:1,ag:0},{h:"Brazil",a:"Chile",y:1998,hg:4,ag:1},{h:"France",a:"Paraguay",y:1998,hg:1,ag:0},{h:"Nigeria",a:"Denmark",y:1998,hg:1,ag:4},
+{h:"Germany",a:"Mexico",y:1998,hg:2,ag:1},{h:"Netherlands",a:"FR Yugoslavia",y:1998,hg:2,ag:1},{h:"Romania",a:"Croatia",y:1998,hg:0,ag:1},{h:"Argentina",a:"England",y:1998,hg:2,ag:2},{h:"Italy",a:"France",y:1998,hg:0,ag:0},{h:"Brazil",a:"Denmark",y:1998,hg:3,ag:2},{h:"Netherlands",a:"Argentina",y:1998,hg:2,ag:1},{h:"Germany",a:"Croatia",y:1998,hg:0,ag:3},{h:"Brazil",a:"Netherlands",y:1998,hg:1,ag:1},{h:"France",a:"Croatia",y:1998,hg:2,ag:1},
+{h:"Netherlands",a:"Croatia",y:1998,hg:1,ag:2},{h:"Brazil",a:"France",y:1998,hg:0,ag:3},{h:"France",a:"Senegal",y:2002,hg:0,ag:1},{h:"Uruguay",a:"Denmark",y:2002,hg:1,ag:2},{h:"Denmark",a:"Senegal",y:2002,hg:1,ag:1},{h:"France",a:"Uruguay",y:2002,hg:0,ag:0},{h:"Denmark",a:"France",y:2002,hg:2,ag:0},{h:"Senegal",a:"Uruguay",y:2002,hg:3,ag:3},{h:"Paraguay",a:"South Africa",y:2002,hg:2,ag:2},{h:"Spain",a:"Slovenia",y:2002,hg:3,ag:1},
+{h:"Spain",a:"Paraguay",y:2002,hg:3,ag:1},{h:"South Africa",a:"Slovenia",y:2002,hg:1,ag:0},{h:"South Africa",a:"Spain",y:2002,hg:2,ag:3},{h:"Slovenia",a:"Paraguay",y:2002,hg:1,ag:3},{h:"Brazil",a:"Turkey",y:2002,hg:2,ag:1},{h:"China",a:"Costa Rica",y:2002,hg:0,ag:2},{h:"Brazil",a:"China",y:2002,hg:4,ag:0},{h:"Costa Rica",a:"Turkey",y:2002,hg:1,ag:1},{h:"Costa Rica",a:"Brazil",y:2002,hg:2,ag:5},{h:"Turkey",a:"China",y:2002,hg:3,ag:0},
+{h:"South Korea",a:"Poland",y:2002,hg:2,ag:0},{h:"United States",a:"Portugal",y:2002,hg:3,ag:2},{h:"South Korea",a:"United States",y:2002,hg:1,ag:1},{h:"Portugal",a:"Poland",y:2002,hg:4,ag:0},{h:"Portugal",a:"South Korea",y:2002,hg:0,ag:1},{h:"Poland",a:"United States",y:2002,hg:3,ag:1},{h:"Republic of Ireland",a:"Cameroon",y:2002,hg:1,ag:1},{h:"Germany",a:"Saudi Arabia",y:2002,hg:8,ag:0},{h:"Germany",a:"Republic of Ireland",y:2002,hg:1,ag:1},{h:"Cameroon",a:"Saudi Arabia",y:2002,hg:1,ag:0},
+{h:"Cameroon",a:"Germany",y:2002,hg:0,ag:2},{h:"Saudi Arabia",a:"Republic of Ireland",y:2002,hg:0,ag:3},{h:"Argentina",a:"Nigeria",y:2002,hg:1,ag:0},{h:"England",a:"Sweden",y:2002,hg:1,ag:1},{h:"Sweden",a:"Nigeria",y:2002,hg:2,ag:1},{h:"Argentina",a:"England",y:2002,hg:0,ag:1},{h:"Sweden",a:"Argentina",y:2002,hg:1,ag:1},{h:"Nigeria",a:"England",y:2002,hg:0,ag:0},{h:"Croatia",a:"Mexico",y:2002,hg:0,ag:1},{h:"Italy",a:"Ecuador",y:2002,hg:2,ag:0},
+{h:"Italy",a:"Croatia",y:2002,hg:1,ag:2},{h:"Mexico",a:"Ecuador",y:2002,hg:2,ag:1},{h:"Mexico",a:"Italy",y:2002,hg:1,ag:1},{h:"Ecuador",a:"Croatia",y:2002,hg:1,ag:0},{h:"Japan",a:"Belgium",y:2002,hg:2,ag:2},{h:"Russia",a:"Tunisia",y:2002,hg:2,ag:0},{h:"Japan",a:"Russia",y:2002,hg:1,ag:0},{h:"Tunisia",a:"Belgium",y:2002,hg:1,ag:1},{h:"Tunisia",a:"Japan",y:2002,hg:0,ag:2},{h:"Belgium",a:"Russia",y:2002,hg:3,ag:2},
+{h:"Germany",a:"Paraguay",y:2002,hg:1,ag:0},{h:"Denmark",a:"England",y:2002,hg:0,ag:3},{h:"Sweden",a:"Senegal",y:2002,hg:1,ag:2},{h:"Spain",a:"Republic of Ireland",y:2002,hg:1,ag:1},{h:"Mexico",a:"United States",y:2002,hg:0,ag:2},{h:"Brazil",a:"Belgium",y:2002,hg:2,ag:0},{h:"Japan",a:"Turkey",y:2002,hg:0,ag:1},{h:"South Korea",a:"Italy",y:2002,hg:2,ag:1},{h:"England",a:"Brazil",y:2002,hg:1,ag:2},{h:"Germany",a:"United States",y:2002,hg:1,ag:0},
+{h:"Spain",a:"South Korea",y:2002,hg:0,ag:0},{h:"Senegal",a:"Turkey",y:2002,hg:0,ag:1},{h:"Germany",a:"South Korea",y:2002,hg:1,ag:0},{h:"Brazil",a:"Turkey",y:2002,hg:1,ag:0},{h:"South Korea",a:"Turkey",y:2002,hg:2,ag:3},{h:"Germany",a:"Brazil",y:2002,hg:0,ag:2},{h:"Germany",a:"Costa Rica",y:2006,hg:4,ag:2},{h:"Poland",a:"Ecuador",y:2006,hg:0,ag:2},{h:"Germany",a:"Poland",y:2006,hg:1,ag:0},{h:"Ecuador",a:"Costa Rica",y:2006,hg:3,ag:0},
+{h:"Ecuador",a:"Germany",y:2006,hg:0,ag:3},{h:"Costa Rica",a:"Poland",y:2006,hg:1,ag:2},{h:"England",a:"Paraguay",y:2006,hg:1,ag:0},{h:"Trinidad and Tobago",a:"Sweden",y:2006,hg:0,ag:0},{h:"England",a:"Trinidad and Tobago",y:2006,hg:2,ag:0},{h:"Sweden",a:"Paraguay",y:2006,hg:1,ag:0},{h:"Sweden",a:"England",y:2006,hg:2,ag:2},{h:"Paraguay",a:"Trinidad and Tobago",y:2006,hg:2,ag:0},{h:"Argentina",a:"Ivory Coast",y:2006,hg:2,ag:1},{h:"Serbia and Montenegro",a:"Netherlands",y:2006,hg:0,ag:1},
+{h:"Argentina",a:"Serbia and Montenegro",y:2006,hg:6,ag:0},{h:"Netherlands",a:"Ivory Coast",y:2006,hg:2,ag:1},{h:"Netherlands",a:"Argentina",y:2006,hg:0,ag:0},{h:"Ivory Coast",a:"Serbia and Montenegro",y:2006,hg:3,ag:2},{h:"Mexico",a:"Iran",y:2006,hg:3,ag:1},{h:"Angola",a:"Portugal",y:2006,hg:0,ag:1},{h:"Mexico",a:"Angola",y:2006,hg:0,ag:0},{h:"Portugal",a:"Iran",y:2006,hg:2,ag:0},{h:"Portugal",a:"Mexico",y:2006,hg:2,ag:1},{h:"Iran",a:"Angola",y:2006,hg:1,ag:1},
+{h:"United States",a:"Czech Republic",y:2006,hg:0,ag:3},{h:"Italy",a:"Ghana",y:2006,hg:2,ag:0},{h:"Czech Republic",a:"Ghana",y:2006,hg:0,ag:2},{h:"Italy",a:"United States",y:2006,hg:1,ag:1},{h:"Czech Republic",a:"Italy",y:2006,hg:0,ag:2},{h:"Ghana",a:"United States",y:2006,hg:2,ag:1},{h:"Australia",a:"Japan",y:2006,hg:3,ag:1},{h:"Brazil",a:"Croatia",y:2006,hg:1,ag:0},{h:"Japan",a:"Croatia",y:2006,hg:0,ag:0},{h:"Brazil",a:"Australia",y:2006,hg:2,ag:0},
+{h:"Japan",a:"Brazil",y:2006,hg:1,ag:4},{h:"Croatia",a:"Australia",y:2006,hg:2,ag:2},{h:"South Korea",a:"Togo",y:2006,hg:2,ag:1},{h:"France",a:"Switzerland",y:2006,hg:0,ag:0},{h:"France",a:"South Korea",y:2006,hg:1,ag:1},{h:"Togo",a:"Switzerland",y:2006,hg:0,ag:2},{h:"Togo",a:"France",y:2006,hg:0,ag:2},{h:"Switzerland",a:"South Korea",y:2006,hg:2,ag:0},{h:"Spain",a:"Ukraine",y:2006,hg:4,ag:0},{h:"Tunisia",a:"Saudi Arabia",y:2006,hg:2,ag:2},
+{h:"Saudi Arabia",a:"Ukraine",y:2006,hg:0,ag:4},{h:"Spain",a:"Tunisia",y:2006,hg:3,ag:1},{h:"Saudi Arabia",a:"Spain",y:2006,hg:0,ag:1},{h:"Ukraine",a:"Tunisia",y:2006,hg:1,ag:0},{h:"Germany",a:"Sweden",y:2006,hg:2,ag:0},{h:"Argentina",a:"Mexico",y:2006,hg:2,ag:1},{h:"England",a:"Ecuador",y:2006,hg:1,ag:0},{h:"Portugal",a:"Netherlands",y:2006,hg:1,ag:0},{h:"Italy",a:"Australia",y:2006,hg:1,ag:0},{h:"Switzerland",a:"Ukraine",y:2006,hg:0,ag:0},
+{h:"Brazil",a:"Ghana",y:2006,hg:3,ag:0},{h:"Spain",a:"France",y:2006,hg:1,ag:3},{h:"Germany",a:"Argentina",y:2006,hg:1,ag:1},{h:"Italy",a:"Ukraine",y:2006,hg:3,ag:0},{h:"England",a:"Portugal",y:2006,hg:0,ag:0},{h:"Brazil",a:"France",y:2006,hg:0,ag:1},{h:"Germany",a:"Italy",y:2006,hg:0,ag:2},{h:"Portugal",a:"France",y:2006,hg:0,ag:1},{h:"Germany",a:"Portugal",y:2006,hg:3,ag:1},{h:"Italy",a:"France",y:2006,hg:1,ag:1},
+{h:"South Africa",a:"Mexico",y:2010,hg:1,ag:1},{h:"Uruguay",a:"France",y:2010,hg:0,ag:0},{h:"South Africa",a:"Uruguay",y:2010,hg:0,ag:3},{h:"France",a:"Mexico",y:2010,hg:0,ag:2},{h:"Mexico",a:"Uruguay",y:2010,hg:0,ag:1},{h:"France",a:"South Africa",y:2010,hg:1,ag:2},{h:"South Korea",a:"Greece",y:2010,hg:2,ag:0},{h:"Argentina",a:"Nigeria",y:2010,hg:1,ag:0},{h:"Argentina",a:"South Korea",y:2010,hg:4,ag:1},{h:"Greece",a:"Nigeria",y:2010,hg:2,ag:1},
+{h:"Nigeria",a:"South Korea",y:2010,hg:2,ag:2},{h:"Greece",a:"Argentina",y:2010,hg:0,ag:2},{h:"England",a:"United States",y:2010,hg:1,ag:1},{h:"Algeria",a:"Slovenia",y:2010,hg:0,ag:1},{h:"Slovenia",a:"United States",y:2010,hg:2,ag:2},{h:"England",a:"Algeria",y:2010,hg:0,ag:0},{h:"Slovenia",a:"England",y:2010,hg:0,ag:1},{h:"United States",a:"Algeria",y:2010,hg:1,ag:0},{h:"Serbia",a:"Ghana",y:2010,hg:0,ag:1},{h:"Germany",a:"Australia",y:2010,hg:4,ag:0},
+{h:"Germany",a:"Serbia",y:2010,hg:0,ag:1},{h:"Ghana",a:"Australia",y:2010,hg:1,ag:1},{h:"Ghana",a:"Germany",y:2010,hg:0,ag:1},{h:"Australia",a:"Serbia",y:2010,hg:2,ag:1},{h:"Netherlands",a:"Denmark",y:2010,hg:2,ag:0},{h:"Japan",a:"Cameroon",y:2010,hg:1,ag:0},{h:"Netherlands",a:"Japan",y:2010,hg:1,ag:0},{h:"Cameroon",a:"Denmark",y:2010,hg:1,ag:2},{h:"Denmark",a:"Japan",y:2010,hg:1,ag:3},{h:"Cameroon",a:"Netherlands",y:2010,hg:1,ag:2},
+{h:"Italy",a:"Paraguay",y:2010,hg:1,ag:1},{h:"New Zealand",a:"Slovakia",y:2010,hg:1,ag:1},{h:"Slovakia",a:"Paraguay",y:2010,hg:0,ag:2},{h:"Italy",a:"New Zealand",y:2010,hg:1,ag:1},{h:"Slovakia",a:"Italy",y:2010,hg:3,ag:2},{h:"Paraguay",a:"New Zealand",y:2010,hg:0,ag:0},{h:"Ivory Coast",a:"Portugal",y:2010,hg:0,ag:0},{h:"Brazil",a:"North Korea",y:2010,hg:2,ag:1},{h:"Brazil",a:"Ivory Coast",y:2010,hg:3,ag:1},{h:"Portugal",a:"North Korea",y:2010,hg:7,ag:0},
+{h:"Portugal",a:"Brazil",y:2010,hg:0,ag:0},{h:"North Korea",a:"Ivory Coast",y:2010,hg:0,ag:3},{h:"Honduras",a:"Chile",y:2010,hg:0,ag:1},{h:"Spain",a:"Switzerland",y:2010,hg:0,ag:1},{h:"Chile",a:"Switzerland",y:2010,hg:1,ag:0},{h:"Spain",a:"Honduras",y:2010,hg:2,ag:0},{h:"Chile",a:"Spain",y:2010,hg:1,ag:2},{h:"Switzerland",a:"Honduras",y:2010,hg:0,ag:0},{h:"Uruguay",a:"South Korea",y:2010,hg:2,ag:1},{h:"United States",a:"Ghana",y:2010,hg:1,ag:2},
+{h:"Germany",a:"England",y:2010,hg:4,ag:1},{h:"Argentina",a:"Mexico",y:2010,hg:3,ag:1},{h:"Netherlands",a:"Slovakia",y:2010,hg:2,ag:1},{h:"Brazil",a:"Chile",y:2010,hg:3,ag:0},{h:"Paraguay",a:"Japan",y:2010,hg:0,ag:0},{h:"Spain",a:"Portugal",y:2010,hg:1,ag:0},{h:"Netherlands",a:"Brazil",y:2010,hg:2,ag:1},{h:"Uruguay",a:"Ghana",y:2010,hg:1,ag:1},{h:"Argentina",a:"Germany",y:2010,hg:0,ag:4},{h:"Paraguay",a:"Spain",y:2010,hg:0,ag:1},
+{h:"Uruguay",a:"Netherlands",y:2010,hg:2,ag:3},{h:"Germany",a:"Spain",y:2010,hg:0,ag:1},{h:"Uruguay",a:"Germany",y:2010,hg:2,ag:3},{h:"Netherlands",a:"Spain",y:2010,hg:0,ag:1},{h:"Brazil",a:"Croatia",y:2014,hg:3,ag:1},{h:"Mexico",a:"Cameroon",y:2014,hg:1,ag:0},{h:"Brazil",a:"Mexico",y:2014,hg:0,ag:0},{h:"Cameroon",a:"Croatia",y:2014,hg:0,ag:4},{h:"Cameroon",a:"Brazil",y:2014,hg:1,ag:4},{h:"Croatia",a:"Mexico",y:2014,hg:1,ag:3},
+{h:"Spain",a:"Netherlands",y:2014,hg:1,ag:5},{h:"Chile",a:"Australia",y:2014,hg:3,ag:1},{h:"Australia",a:"Netherlands",y:2014,hg:2,ag:3},{h:"Spain",a:"Chile",y:2014,hg:0,ag:2},{h:"Australia",a:"Spain",y:2014,hg:0,ag:3},{h:"Netherlands",a:"Chile",y:2014,hg:2,ag:0},{h:"Colombia",a:"Greece",y:2014,hg:3,ag:0},{h:"Ivory Coast",a:"Japan",y:2014,hg:2,ag:1},{h:"Colombia",a:"Ivory Coast",y:2014,hg:2,ag:1},{h:"Japan",a:"Greece",y:2014,hg:0,ag:0},
+{h:"Japan",a:"Colombia",y:2014,hg:1,ag:4},{h:"Greece",a:"Ivory Coast",y:2014,hg:2,ag:1},{h:"Uruguay",a:"Costa Rica",y:2014,hg:1,ag:3},{h:"England",a:"Italy",y:2014,hg:1,ag:2},{h:"Uruguay",a:"England",y:2014,hg:2,ag:1},{h:"Italy",a:"Costa Rica",y:2014,hg:0,ag:1},{h:"Italy",a:"Uruguay",y:2014,hg:0,ag:1},{h:"Costa Rica",a:"England",y:2014,hg:0,ag:0},{h:"Switzerland",a:"Ecuador",y:2014,hg:2,ag:1},{h:"France",a:"Honduras",y:2014,hg:3,ag:0},
+{h:"Switzerland",a:"France",y:2014,hg:2,ag:5},{h:"Honduras",a:"Ecuador",y:2014,hg:1,ag:2},{h:"Honduras",a:"Switzerland",y:2014,hg:0,ag:3},{h:"Ecuador",a:"France",y:2014,hg:0,ag:0},{h:"Argentina",a:"Bosnia and Herzegovina",y:2014,hg:2,ag:1},{h:"Iran",a:"Nigeria",y:2014,hg:0,ag:0},{h:"Argentina",a:"Iran",y:2014,hg:1,ag:0},{h:"Nigeria",a:"Bosnia and Herzegovina",y:2014,hg:1,ag:0},{h:"Nigeria",a:"Argentina",y:2014,hg:2,ag:3},{h:"Bosnia and Herzegovina",a:"Iran",y:2014,hg:3,ag:1},
+{h:"Germany",a:"Portugal",y:2014,hg:4,ag:0},{h:"Ghana",a:"United States",y:2014,hg:1,ag:2},{h:"Germany",a:"Ghana",y:2014,hg:2,ag:2},{h:"United States",a:"Portugal",y:2014,hg:2,ag:2},{h:"United States",a:"Germany",y:2014,hg:0,ag:1},{h:"Portugal",a:"Ghana",y:2014,hg:2,ag:1},{h:"Belgium",a:"Algeria",y:2014,hg:2,ag:1},{h:"Russia",a:"South Korea",y:2014,hg:1,ag:1},{h:"Belgium",a:"Russia",y:2014,hg:1,ag:0},{h:"South Korea",a:"Algeria",y:2014,hg:2,ag:4},
+{h:"South Korea",a:"Belgium",y:2014,hg:0,ag:1},{h:"Algeria",a:"Russia",y:2014,hg:1,ag:1},{h:"Brazil",a:"Chile",y:2014,hg:1,ag:1},{h:"Colombia",a:"Uruguay",y:2014,hg:2,ag:0},{h:"Netherlands",a:"Mexico",y:2014,hg:2,ag:1},{h:"Costa Rica",a:"Greece",y:2014,hg:1,ag:1},{h:"France",a:"Nigeria",y:2014,hg:2,ag:0},{h:"Germany",a:"Algeria",y:2014,hg:2,ag:1},{h:"Argentina",a:"Switzerland",y:2014,hg:1,ag:0},{h:"Belgium",a:"United States",y:2014,hg:2,ag:1},
+{h:"France",a:"Germany",y:2014,hg:0,ag:1},{h:"Brazil",a:"Colombia",y:2014,hg:2,ag:1},{h:"Argentina",a:"Belgium",y:2014,hg:1,ag:0},{h:"Netherlands",a:"Costa Rica",y:2014,hg:0,ag:0},{h:"Brazil",a:"Germany",y:2014,hg:1,ag:7},{h:"Netherlands",a:"Argentina",y:2014,hg:0,ag:0},{h:"Brazil",a:"Netherlands",y:2014,hg:0,ag:3},{h:"Germany",a:"Argentina",y:2014,hg:1,ag:0},{h:"Russia",a:"Saudi Arabia",y:2018,hg:5,ag:0},{h:"Egypt",a:"Uruguay",y:2018,hg:0,ag:1},
+{h:"Russia",a:"Egypt",y:2018,hg:3,ag:1},{h:"Uruguay",a:"Saudi Arabia",y:2018,hg:1,ag:0},{h:"Uruguay",a:"Russia",y:2018,hg:3,ag:0},{h:"Saudi Arabia",a:"Egypt",y:2018,hg:2,ag:1},{h:"Morocco",a:"Iran",y:2018,hg:0,ag:1},{h:"Portugal",a:"Spain",y:2018,hg:3,ag:3},{h:"Portugal",a:"Morocco",y:2018,hg:1,ag:0},{h:"Iran",a:"Spain",y:2018,hg:0,ag:1},{h:"Iran",a:"Portugal",y:2018,hg:1,ag:1},{h:"Spain",a:"Morocco",y:2018,hg:2,ag:2},
+{h:"France",a:"Australia",y:2018,hg:2,ag:1},{h:"Peru",a:"Denmark",y:2018,hg:0,ag:1},{h:"Denmark",a:"Australia",y:2018,hg:1,ag:1},{h:"France",a:"Peru",y:2018,hg:1,ag:0},{h:"Denmark",a:"France",y:2018,hg:0,ag:0},{h:"Australia",a:"Peru",y:2018,hg:0,ag:2},{h:"Argentina",a:"Iceland",y:2018,hg:1,ag:1},{h:"Croatia",a:"Nigeria",y:2018,hg:2,ag:0},{h:"Argentina",a:"Croatia",y:2018,hg:0,ag:3},{h:"Nigeria",a:"Iceland",y:2018,hg:2,ag:0},
+{h:"Nigeria",a:"Argentina",y:2018,hg:1,ag:2},{h:"Iceland",a:"Croatia",y:2018,hg:1,ag:2},{h:"Costa Rica",a:"Serbia",y:2018,hg:0,ag:1},{h:"Brazil",a:"Switzerland",y:2018,hg:1,ag:1},{h:"Brazil",a:"Costa Rica",y:2018,hg:2,ag:0},{h:"Serbia",a:"Switzerland",y:2018,hg:1,ag:2},{h:"Serbia",a:"Brazil",y:2018,hg:0,ag:2},{h:"Switzerland",a:"Costa Rica",y:2018,hg:2,ag:2},{h:"Germany",a:"Mexico",y:2018,hg:0,ag:1},{h:"Sweden",a:"South Korea",y:2018,hg:1,ag:0},
+{h:"South Korea",a:"Mexico",y:2018,hg:1,ag:2},{h:"Germany",a:"Sweden",y:2018,hg:2,ag:1},{h:"South Korea",a:"Germany",y:2018,hg:2,ag:0},{h:"Mexico",a:"Sweden",y:2018,hg:0,ag:3},{h:"Belgium",a:"Panama",y:2018,hg:3,ag:0},{h:"Tunisia",a:"England",y:2018,hg:1,ag:2},{h:"Belgium",a:"Tunisia",y:2018,hg:5,ag:2},{h:"England",a:"Panama",y:2018,hg:6,ag:1},{h:"England",a:"Belgium",y:2018,hg:0,ag:1},{h:"Panama",a:"Tunisia",y:2018,hg:1,ag:2},
+{h:"Colombia",a:"Japan",y:2018,hg:1,ag:2},{h:"Poland",a:"Senegal",y:2018,hg:1,ag:2},{h:"Japan",a:"Senegal",y:2018,hg:2,ag:2},{h:"Poland",a:"Colombia",y:2018,hg:0,ag:3},{h:"Japan",a:"Poland",y:2018,hg:0,ag:1},{h:"Senegal",a:"Colombia",y:2018,hg:0,ag:1},{h:"France",a:"Argentina",y:2018,hg:4,ag:3},{h:"Uruguay",a:"Portugal",y:2018,hg:2,ag:1},{h:"Spain",a:"Russia",y:2018,hg:1,ag:1},{h:"Croatia",a:"Denmark",y:2018,hg:1,ag:1},
+{h:"Brazil",a:"Mexico",y:2018,hg:2,ag:0},{h:"Belgium",a:"Japan",y:2018,hg:3,ag:2},{h:"Sweden",a:"Switzerland",y:2018,hg:1,ag:0},{h:"Colombia",a:"England",y:2018,hg:1,ag:1},{h:"Uruguay",a:"France",y:2018,hg:0,ag:2},{h:"Brazil",a:"Belgium",y:2018,hg:1,ag:2},{h:"Sweden",a:"England",y:2018,hg:0,ag:2},{h:"Russia",a:"Croatia",y:2018,hg:2,ag:2},{h:"France",a:"Belgium",y:2018,hg:1,ag:0},{h:"Croatia",a:"England",y:2018,hg:2,ag:1},
+{h:"Belgium",a:"England",y:2018,hg:2,ag:0},{h:"France",a:"Croatia",y:2018,hg:4,ag:2},{h:"Qatar",a:"Ecuador",y:2022,hg:0,ag:2},{h:"Senegal",a:"Netherlands",y:2022,hg:0,ag:2},{h:"Qatar",a:"Senegal",y:2022,hg:1,ag:3},{h:"Netherlands",a:"Ecuador",y:2022,hg:1,ag:1},{h:"Ecuador",a:"Senegal",y:2022,hg:1,ag:2},{h:"Netherlands",a:"Qatar",y:2022,hg:2,ag:0},{h:"England",a:"Iran",y:2022,hg:6,ag:2},{h:"United States",a:"Wales",y:2022,hg:1,ag:1},
+{h:"Wales",a:"Iran",y:2022,hg:0,ag:2},{h:"England",a:"United States",y:2022,hg:0,ag:0},{h:"Wales",a:"England",y:2022,hg:0,ag:3},{h:"Iran",a:"United States",y:2022,hg:0,ag:1},{h:"Argentina",a:"Saudi Arabia",y:2022,hg:1,ag:2},{h:"Mexico",a:"Poland",y:2022,hg:0,ag:0},{h:"Poland",a:"Saudi Arabia",y:2022,hg:2,ag:0},{h:"Argentina",a:"Mexico",y:2022,hg:2,ag:0},{h:"Poland",a:"Argentina",y:2022,hg:0,ag:2},{h:"Saudi Arabia",a:"Mexico",y:2022,hg:1,ag:2},
+{h:"Denmark",a:"Tunisia",y:2022,hg:0,ag:0},{h:"France",a:"Australia",y:2022,hg:4,ag:1},{h:"Tunisia",a:"Australia",y:2022,hg:0,ag:1},{h:"France",a:"Denmark",y:2022,hg:2,ag:1},{h:"Australia",a:"Denmark",y:2022,hg:1,ag:0},{h:"Tunisia",a:"France",y:2022,hg:1,ag:0},{h:"Germany",a:"Japan",y:2022,hg:1,ag:2},{h:"Spain",a:"Costa Rica",y:2022,hg:7,ag:0},{h:"Japan",a:"Costa Rica",y:2022,hg:0,ag:1},{h:"Spain",a:"Germany",y:2022,hg:1,ag:1},
+{h:"Japan",a:"Spain",y:2022,hg:2,ag:1},{h:"Costa Rica",a:"Germany",y:2022,hg:2,ag:4},{h:"Morocco",a:"Croatia",y:2022,hg:0,ag:0},{h:"Belgium",a:"Canada",y:2022,hg:1,ag:0},{h:"Belgium",a:"Morocco",y:2022,hg:0,ag:2},{h:"Croatia",a:"Canada",y:2022,hg:4,ag:1},{h:"Croatia",a:"Belgium",y:2022,hg:0,ag:0},{h:"Canada",a:"Morocco",y:2022,hg:1,ag:2},{h:"Switzerland",a:"Cameroon",y:2022,hg:1,ag:0},{h:"Brazil",a:"Serbia",y:2022,hg:2,ag:0},
+{h:"Cameroon",a:"Serbia",y:2022,hg:3,ag:3},{h:"Brazil",a:"Switzerland",y:2022,hg:1,ag:0},{h:"Serbia",a:"Switzerland",y:2022,hg:2,ag:3},{h:"Cameroon",a:"Brazil",y:2022,hg:1,ag:0},{h:"Uruguay",a:"South Korea",y:2022,hg:0,ag:0},{h:"Portugal",a:"Ghana",y:2022,hg:3,ag:2},{h:"South Korea",a:"Ghana",y:2022,hg:2,ag:3},{h:"Portugal",a:"Uruguay",y:2022,hg:2,ag:0},{h:"Ghana",a:"Uruguay",y:2022,hg:0,ag:2},{h:"South Korea",a:"Portugal",y:2022,hg:2,ag:1},
+{h:"Netherlands",a:"United States",y:2022,hg:3,ag:1},{h:"Argentina",a:"Australia",y:2022,hg:2,ag:1},{h:"France",a:"Poland",y:2022,hg:3,ag:1},{h:"England",a:"Senegal",y:2022,hg:3,ag:0},{h:"Japan",a:"Croatia",y:2022,hg:1,ag:1},{h:"Brazil",a:"South Korea",y:2022,hg:4,ag:1},{h:"Morocco",a:"Spain",y:2022,hg:0,ag:0},{h:"Portugal",a:"Switzerland",y:2022,hg:6,ag:1},{h:"Croatia",a:"Brazil",y:2022,hg:1,ag:1},{h:"Netherlands",a:"Argentina",y:2022,hg:2,ag:2},
+{h:"Morocco",a:"Portugal",y:2022,hg:1,ag:0},{h:"England",a:"France",y:2022,hg:1,ag:2},{h:"Argentina",a:"Croatia",y:2022,hg:3,ag:0},{h:"France",a:"Morocco",y:2022,hg:2,ag:0},{h:"Croatia",a:"Morocco",y:2022,hg:2,ag:1},{h:"Argentina",a:"France",y:2022,hg:3,ag:3},{h:"Italy",a:"Austria",y:1990,hg:1,ag:0},{h:"United States",a:"Czechoslovakia",y:1990,hg:1,ag:5},{h:"Italy",a:"United States",y:1990,hg:1,ag:0},{h:"Austria",a:"Czechoslovakia",y:1990,hg:0,ag:1},
+{h:"Italy",a:"Czechoslovakia",y:1990,hg:2,ag:0},{h:"Austria",a:"United States",y:1990,hg:2,ag:1},{h:"Argentina",a:"Cameroon",y:1990,hg:0,ag:1},{h:"Soviet Union",a:"Romania",y:1990,hg:0,ag:2},{h:"Argentina",a:"Soviet Union",y:1990,hg:2,ag:0},{h:"Cameroon",a:"Romania",y:1990,hg:2,ag:1},{h:"Argentina",a:"Romania",y:1990,hg:1,ag:1},{h:"Cameroon",a:"Soviet Union",y:1990,hg:0,ag:4},{h:"Brazil",a:"Sweden",y:1990,hg:2,ag:1},{h:"Costa Rica",a:"Scotland",y:1990,hg:1,ag:0},
+{h:"Brazil",a:"Costa Rica",y:1990,hg:1,ag:0},{h:"Sweden",a:"Scotland",y:1990,hg:1,ag:2},{h:"Brazil",a:"Scotland",y:1990,hg:1,ag:0},{h:"Sweden",a:"Costa Rica",y:1990,hg:1,ag:2},{h:"United Arab Emirates",a:"Colombia",y:1990,hg:0,ag:2},{h:"West Germany",a:"Yugoslavia",y:1990,hg:4,ag:1},{h:"Yugoslavia",a:"Colombia",y:1990,hg:1,ag:0},{h:"West Germany",a:"United Arab Emirates",y:1990,hg:5,ag:1},{h:"West Germany",a:"Colombia",y:1990,hg:1,ag:1},{h:"Yugoslavia",a:"United Arab Emirates",y:1990,hg:4,ag:1},
+{h:"Belgium",a:"South Korea",y:1990,hg:2,ag:0},{h:"Uruguay",a:"Spain",y:1990,hg:0,ag:0},{h:"Belgium",a:"Uruguay",y:1990,hg:3,ag:1},{h:"South Korea",a:"Spain",y:1990,hg:1,ag:3},{h:"Belgium",a:"Spain",y:1990,hg:1,ag:2},{h:"South Korea",a:"Uruguay",y:1990,hg:0,ag:1},{h:"England",a:"Republic of Ireland",y:1990,hg:1,ag:1},{h:"Netherlands",a:"Egypt",y:1990,hg:1,ag:1},{h:"England",a:"Netherlands",y:1990,hg:0,ag:0},{h:"Republic of Ireland",a:"Egypt",y:1990,hg:0,ag:0},
+{h:"England",a:"Egypt",y:1990,hg:1,ag:0},{h:"Republic of Ireland",a:"Netherlands",y:1990,hg:1,ag:1}
+];
+
+// ============================================================
+// === DATA: GROUPS + FIXTURES ================================
+// ============================================================
+const GROUPS_2026 = {
+  A: ["Mexico", "Chile", "Saudi Arabia", "Peru"],
+  B: ["Canada", "Denmark", "Iran", "Mali"],
+  C: ["Argentina", "Belgium", "Egypt", "Cape Verde"],
+  D: ["United States", "Morocco", "Ecuador", "New Zealand"],
+  E: ["Brazil", "Switzerland", "Tunisia", "Nigeria"],
+  F: ["France", "Senegal", "Uzbekistan", "Austria"],
+  G: ["Portugal", "South Korea", "South Africa", "Panama"],
+  H: ["England", "Italy", "Paraguay", "Turkey"],
+  I: ["Spain", "Japan", "Qatar", "Scotland"],
+  J: ["Germany", "Colombia", "Ghana", "Jordan"],
+  K: ["Croatia", "Australia", "Ivory Coast", "Serbia"],
+  L: ["Netherlands", "Uruguay", "Algeria", "Poland"]
+};
+
+const FIXTURES_2026 = [
+  // Group A
+  { match: 1,  group: "A", home: "Mexico",        away: "Chile" },
+  { match: 2,  group: "A", home: "Saudi Arabia",  away: "Peru" },
+  { match: 25, group: "A", home: "Mexico",        away: "Saudi Arabia" },
+  { match: 28, group: "A", home: "Chile",         away: "Peru" },
+  { match: 53, group: "A", home: "Mexico",        away: "Peru" },
+  { match: 54, group: "A", home: "Chile",         away: "Saudi Arabia" },
+  // Group B
+  { match: 3,  group: "B", home: "Canada",        away: "Denmark" },
+  { match: 8,  group: "B", home: "Iran",          away: "Mali" },
+  { match: 26, group: "B", home: "Canada",        away: "Iran" },
+  { match: 27, group: "B", home: "Denmark",       away: "Mali" },
+  { match: 51, group: "B", home: "Canada",        away: "Mali" },
+  { match: 52, group: "B", home: "Denmark",       away: "Iran" },
+  // Group C
+  { match: 5,  group: "C", home: "Argentina",     away: "Belgium" },
+  { match: 7,  group: "C", home: "Egypt",         away: "Cape Verde" },
+  { match: 29, group: "C", home: "Argentina",     away: "Egypt" },
+  { match: 30, group: "C", home: "Belgium",       away: "Cape Verde" },
+  { match: 49, group: "C", home: "Argentina",     away: "Cape Verde" },
+  { match: 50, group: "C", home: "Belgium",       away: "Egypt" },
+  // Group D
+  { match: 4,  group: "D", home: "United States", away: "Morocco" },
+  { match: 6,  group: "D", home: "Ecuador",       away: "New Zealand" },
+  { match: 31, group: "D", home: "United States", away: "Ecuador" },
+  { match: 32, group: "D", home: "Morocco",       away: "New Zealand" },
+  { match: 59, group: "D", home: "United States", away: "New Zealand" },
+  { match: 60, group: "D", home: "Morocco",       away: "Ecuador" },
+  // Group E
+  { match: 9,  group: "E", home: "Brazil",        away: "Switzerland" },
+  { match: 10, group: "E", home: "Tunisia",       away: "Nigeria" },
+  { match: 33, group: "E", home: "Brazil",        away: "Tunisia" },
+  { match: 34, group: "E", home: "Switzerland",   away: "Nigeria" },
+  { match: 55, group: "E", home: "Brazil",        away: "Nigeria" },
+  { match: 56, group: "E", home: "Switzerland",   away: "Tunisia" },
+  // Group F
+  { match: 11, group: "F", home: "France",        away: "Senegal" },
+  { match: 12, group: "F", home: "Uzbekistan",    away: "Austria" },
+  { match: 35, group: "F", home: "France",        away: "Uzbekistan" },
+  { match: 36, group: "F", home: "Senegal",       away: "Austria" },
+  { match: 57, group: "F", home: "France",        away: "Austria" },
+  { match: 58, group: "F", home: "Senegal",       away: "Uzbekistan" },
+  // Group G
+  { match: 13, group: "G", home: "Portugal",      away: "South Korea" },
+  { match: 14, group: "G", home: "South Africa",  away: "Panama" },
+  { match: 37, group: "G", home: "Portugal",      away: "South Africa" },
+  { match: 38, group: "G", home: "South Korea",   away: "Panama" },
+  { match: 65, group: "G", home: "Portugal",      away: "Panama" },
+  { match: 66, group: "G", home: "South Korea",   away: "South Africa" },
+  // Group H
+  { match: 15, group: "H", home: "England",       away: "Italy" },
+  { match: 16, group: "H", home: "Paraguay",      away: "Turkey" },
+  { match: 39, group: "H", home: "England",       away: "Paraguay" },
+  { match: 40, group: "H", home: "Italy",         away: "Turkey" },
+  { match: 63, group: "H", home: "England",       away: "Turkey" },
+  { match: 64, group: "H", home: "Italy",         away: "Paraguay" },
+  // Group I
+  { match: 17, group: "I", home: "Spain",         away: "Japan" },
+  { match: 18, group: "I", home: "Qatar",         away: "Scotland" },
+  { match: 41, group: "I", home: "Spain",         away: "Qatar" },
+  { match: 42, group: "I", home: "Japan",         away: "Scotland" },
+  { match: 61, group: "I", home: "Spain",         away: "Scotland" },
+  { match: 62, group: "I", home: "Japan",         away: "Qatar" },
+  // Group J
+  { match: 19, group: "J", home: "Germany",       away: "Colombia" },
+  { match: 20, group: "J", home: "Ghana",         away: "Jordan" },
+  { match: 43, group: "J", home: "Germany",       away: "Ghana" },
+  { match: 44, group: "J", home: "Colombia",      away: "Jordan" },
+  { match: 69, group: "J", home: "Germany",       away: "Jordan" },
+  { match: 70, group: "J", home: "Colombia",      away: "Ghana" },
+  // Group K
+  { match: 21, group: "K", home: "Croatia",       away: "Australia" },
+  { match: 22, group: "K", home: "Ivory Coast",   away: "Serbia" },
+  { match: 45, group: "K", home: "Croatia",       away: "Ivory Coast" },
+  { match: 46, group: "K", home: "Australia",     away: "Serbia" },
+  { match: 67, group: "K", home: "Croatia",       away: "Serbia" },
+  { match: 68, group: "K", home: "Australia",     away: "Ivory Coast" },
+  // Group L
+  { match: 23, group: "L", home: "Netherlands",   away: "Uruguay" },
+  { match: 24, group: "L", home: "Algeria",       away: "Poland" },
+  { match: 47, group: "L", home: "Netherlands",   away: "Algeria" },
+  { match: 48, group: "L", home: "Uruguay",       away: "Poland" },
+  { match: 71, group: "L", home: "Netherlands",   away: "Poland" },
+  { match: 72, group: "L", home: "Uruguay",       away: "Algeria" }
+];
+
+// ============================================================
+// === DATA: TEAM METADATA ====================================
+// ============================================================
+const TEAM_META = {
+  // CONCACAF hosts
+  "Mexico":        { flag:"🇲🇽", conf:"CONCACAF",  titles:0, host:true,  rank_tier:2 },
+  "Canada":        { flag:"🇨🇦", conf:"CONCACAF",  titles:0, host:true,  rank_tier:3 },
+  "United States": { flag:"🇺🇸", conf:"CONCACAF",  titles:0, host:true,  rank_tier:2 },
+  // Other CONCACAF
+  "Panama":        { flag:"🇵🇦", conf:"CONCACAF",  titles:0, host:false, rank_tier:4 },
+  // CONMEBOL
+  "Argentina":     { flag:"🇦🇷", conf:"CONMEBOL",  titles:3, host:false, rank_tier:1 },
+  "Brazil":        { flag:"🇧🇷", conf:"CONMEBOL",  titles:5, host:false, rank_tier:1 },
+  "Uruguay":       { flag:"🇺🇾", conf:"CONMEBOL",  titles:2, host:false, rank_tier:2 },
+  "Colombia":      { flag:"🇨🇴", conf:"CONMEBOL",  titles:0, host:false, rank_tier:2 },
+  "Ecuador":       { flag:"🇪🇨", conf:"CONMEBOL",  titles:0, host:false, rank_tier:2 },
+  "Paraguay":      { flag:"🇵🇾", conf:"CONMEBOL",  titles:0, host:false, rank_tier:3 },
+  "Chile":         { flag:"🇨🇱", conf:"CONMEBOL",  titles:0, host:false, rank_tier:3 },
+  "Peru":          { flag:"🇵🇪", conf:"CONMEBOL",  titles:0, host:false, rank_tier:3 },
+  // UEFA
+  "France":        { flag:"🇫🇷", conf:"UEFA",      titles:2, host:false, rank_tier:1 },
+  "Spain":         { flag:"🇪🇸", conf:"UEFA",      titles:1, host:false, rank_tier:1 },
+  "England":       { flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿", conf:"UEFA",      titles:1, host:false, rank_tier:1 },
+  "Portugal":      { flag:"🇵🇹", conf:"UEFA",      titles:0, host:false, rank_tier:1 },
+  "Netherlands":   { flag:"🇳🇱", conf:"UEFA",      titles:0, host:false, rank_tier:1 },
+  "Belgium":       { flag:"🇧🇪", conf:"UEFA",      titles:0, host:false, rank_tier:1 },
+  "Italy":         { flag:"🇮🇹", conf:"UEFA",      titles:4, host:false, rank_tier:1 },
+  "Germany":       { flag:"🇩🇪", conf:"UEFA",      titles:4, host:false, rank_tier:1 },
+  "Croatia":       { flag:"🇭🇷", conf:"UEFA",      titles:0, host:false, rank_tier:2 },
+  "Switzerland":   { flag:"🇨🇭", conf:"UEFA",      titles:0, host:false, rank_tier:2 },
+  "Denmark":       { flag:"🇩🇰", conf:"UEFA",      titles:0, host:false, rank_tier:2 },
+  "Austria":       { flag:"🇦🇹", conf:"UEFA",      titles:0, host:false, rank_tier:2 },
+  "Serbia":        { flag:"🇷🇸", conf:"UEFA",      titles:0, host:false, rank_tier:3 },
+  "Poland":        { flag:"🇵🇱", conf:"UEFA",      titles:0, host:false, rank_tier:3 },
+  "Turkey":        { flag:"🇹🇷", conf:"UEFA",      titles:0, host:false, rank_tier:3 },
+  "Scotland":      { flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿", conf:"UEFA",      titles:0, host:false, rank_tier:3 },
+  // CAF
+  "Senegal":       { flag:"🇸🇳", conf:"CAF",       titles:0, host:false, rank_tier:2 },
+  "Morocco":       { flag:"🇲🇦", conf:"CAF",       titles:0, host:false, rank_tier:2 },
+  "Egypt":         { flag:"🇪🇬", conf:"CAF",       titles:0, host:false, rank_tier:3 },
+  "Tunisia":       { flag:"🇹🇳", conf:"CAF",       titles:0, host:false, rank_tier:3 },
+  "Nigeria":       { flag:"🇳🇬", conf:"CAF",       titles:0, host:false, rank_tier:3 },
+  "Ivory Coast":   { flag:"🇨🇮", conf:"CAF",       titles:0, host:false, rank_tier:3 },
+  "Algeria":       { flag:"🇩🇿", conf:"CAF",       titles:0, host:false, rank_tier:3 },
+  "Ghana":         { flag:"🇬🇭", conf:"CAF",       titles:0, host:false, rank_tier:3 },
+  "Mali":          { flag:"🇲🇱", conf:"CAF",       titles:0, host:false, rank_tier:4 },
+  "South Africa":  { flag:"🇿🇦", conf:"CAF",       titles:0, host:false, rank_tier:4 },
+  "Cape Verde":    { flag:"🇨🇻", conf:"CAF",       titles:0, host:false, rank_tier:4 },
+  // AFC
+  "Japan":         { flag:"🇯🇵", conf:"AFC",       titles:0, host:false, rank_tier:2 },
+  "South Korea":   { flag:"🇰🇷", conf:"AFC",       titles:0, host:false, rank_tier:2 },
+  "Iran":          { flag:"🇮🇷", conf:"AFC",       titles:0, host:false, rank_tier:2 },
+  "Australia":     { flag:"🇦🇺", conf:"AFC",       titles:0, host:false, rank_tier:2 },
+  "Saudi Arabia":  { flag:"🇸🇦", conf:"AFC",       titles:0, host:false, rank_tier:3 },
+  "Qatar":         { flag:"🇶🇦", conf:"AFC",       titles:0, host:false, rank_tier:3 },
+  "Uzbekistan":    { flag:"🇺🇿", conf:"AFC",       titles:0, host:false, rank_tier:4 },
+  "Jordan":        { flag:"🇯🇴", conf:"AFC",       titles:0, host:false, rank_tier:4 },
+  // OFC
+  "New Zealand":   { flag:"🇳🇿", conf:"OFC",       titles:0, host:false, rank_tier:4 }
+};
+
+// ============================================================
+// === DATA: NAME NORMALIZATION ===============================
+// ============================================================
+// Map historical team names → list of equivalent modern names to query.
+// When looking up matches for a 2026 modern team, also fetch under these aliases.
+const MODERN_TO_HISTORICAL = {
+  "Germany":        ["Germany", "West Germany"],
+  "Russia":         ["Russia", "Soviet Union"],
+  "Czech Republic": ["Czech Republic", "Czechoslovakia"],
+  "Serbia":         ["Serbia", "FR Yugoslavia", "Yugoslavia", "Serbia and Montenegro"],
+  "Republic of Ireland": ["Republic of Ireland"]
+};
+
+function getAliasesForTeam(modernName) {
+  return MODERN_TO_HISTORICAL[modernName] || [modernName];
+}
+
+// ============================================================
+// === STATS: H2H COMPUTATION =================================
+// ============================================================
+function computeH2H(teamA, teamB) {
+  const aliasesA = getAliasesForTeam(teamA);
+  const aliasesB = getAliasesForTeam(teamB);
+  const setA = new Set(aliasesA);
+  const setB = new Set(aliasesB);
+
+  let total = 0, a_wins = 0, draws = 0, b_wins = 0;
+  let a_goals_total = 0, b_goals_total = 0;
+  let last_meeting = null;
+  // Time-decay: 0.95^(2026 - year), weighted win rate for A
+  let decayed_wins_a = 0, decayed_total = 0;
+
+  for (const m of HISTORICAL_MATCHES) {
+    const aIsHome = setA.has(m.h) && setB.has(m.a);
+    const aIsAway = setA.has(m.a) && setB.has(m.h);
+    if (!aIsHome && !aIsAway) continue;
+
+    total++;
+    const gA = aIsHome ? m.hg : m.ag;
+    const gB = aIsHome ? m.ag : m.hg;
+    a_goals_total += gA;
+    b_goals_total += gB;
+
+    let outcome = "draw";
+    if (gA > gB)      { a_wins++; outcome = "a"; }
+    else if (gB > gA) { b_wins++; outcome = "b"; }
+    else              { draws++; }
+
+    if (!last_meeting || m.y > last_meeting.year) {
+      last_meeting = { year: m.y, score_a: gA, score_b: gB };
+    }
+
+    const decay = Math.pow(0.95, 2026 - m.y);
+    decayed_total += decay;
+    if (outcome === "a")     decayed_wins_a += decay * 1.0;
+    else if (outcome === "draw") decayed_wins_a += decay * 0.5;
+  }
+
+  const time_decay_win_rate_a = decayed_total > 0 ? (decayed_wins_a / decayed_total) : null;
+
+  return {
+    total, a_wins, draws, b_wins,
+    a_goals_total, b_goals_total,
+    last_meeting,
+    time_decay_win_rate_a
+  };
+}
+
+// ============================================================
+// === STATS: TEAM STRENGTH ===================================
+// ============================================================
+function computeTeamStrength(team) {
+  const aliases = new Set(getAliasesForTeam(team));
+  const years = new Set();
+  let played = 0, wins = 0, draws = 0, losses = 0;
+  let gf = 0, ga = 0;
+
+  // Recent form: 2018 + 2022
+  let r_played = 0, r_won = 0, r_drawn = 0, r_lost = 0, r_gf = 0, r_ga = 0;
+
+  for (const m of HISTORICAL_MATCHES) {
+    const isHome = aliases.has(m.h);
+    const isAway = aliases.has(m.a);
+    if (!isHome && !isAway) continue;
+
+    years.add(m.y);
+    played++;
+    const gFor    = isHome ? m.hg : m.ag;
+    const gAgainst = isHome ? m.ag : m.hg;
+    gf += gFor; ga += gAgainst;
+
+    let outcome = "draw";
+    if (gFor > gAgainst)      { wins++; outcome = "win"; }
+    else if (gFor < gAgainst) { losses++; outcome = "loss"; }
+    else                       { draws++; }
+
+    if (m.y === 2018 || m.y === 2022) {
+      r_played++;
+      r_gf += gFor; r_ga += gAgainst;
+      if (outcome === "win")  r_won++;
+      else if (outcome === "loss") r_lost++;
+      else                    r_drawn++;
+    }
+  }
+
+  return {
+    wc_appearances: years.size,
+    wc_titles: (TEAM_META[team] && TEAM_META[team].titles) || 0,
+    all_time_matches: played,
+    all_time_wins: wins,
+    all_time_draws: draws,
+    all_time_losses: losses,
+    win_rate: played > 0 ? (wins / played) : 0,
+    avg_goals_for: played > 0 ? (gf / played) : 0,
+    avg_goals_against: played > 0 ? (ga / played) : 0,
+    recent_form_2018_2022: {
+      played: r_played, won: r_won, drawn: r_drawn, lost: r_lost,
+      gf: r_gf, ga: r_ga
+    }
+  };
+}
+
+function computeMatchFeatures(teamA, teamB, groupLetter) {
+  const metaA = TEAM_META[teamA] || {};
+  const metaB = TEAM_META[teamB] || {};
+  let host_advantage = "none";
+  if (metaA.host && !metaB.host) host_advantage = "A";
+  else if (!metaA.host && metaB.host) host_advantage = "B";
+  else if (metaA.host && metaB.host) host_advantage = "both";
+
+  return {
+    h2h: computeH2H(teamA, teamB),
+    team_a_strength: computeTeamStrength(teamA),
+    team_b_strength: computeTeamStrength(teamB),
+    context: {
+      stage: "group",
+      group: groupLetter,
+      host_advantage,
+      rank_tier_a: metaA.rank_tier || 4,
+      rank_tier_b: metaB.rank_tier || 4,
+      confederation_matchup: `${metaA.conf || "?"}-${metaB.conf || "?"}`
+    }
+  };
+}
+
+// ============================================================
+// === GEMINI: PROMPT BUILDER =================================
+// ============================================================
+function pct(n) { return Math.round(n * 100); }
+function fmtNum(n, d=2) { return n == null ? "?" : (typeof n === "number" ? n.toFixed(d) : String(n)); }
+
+function hostAdvantageVi(adv, teamA, teamB) {
+  if (adv === "A")    return `${teamA} là đồng chủ nhà — có lợi thế sân nhà`;
+  if (adv === "B")    return `${teamB} là đồng chủ nhà — có lợi thế sân nhà`;
+  if (adv === "both") return `Cả hai đều là đồng chủ nhà`;
+  return `Không đội nào là chủ nhà`;
+}
+
+function buildGeminiPrompt(fixture, features) {
+  const { home: teamA, away: teamB, group, match } = fixture;
+  const metaA = TEAM_META[teamA] || { flag: "🏳️" };
+  const metaB = TEAM_META[teamB] || { flag: "🏳️" };
+  const { h2h, team_a_strength: tsA, team_b_strength: tsB, context: ctx } = features;
+
+  const h2hTotalPct = h2h.total > 0 ? {
+    a: Math.round(100 * h2h.a_wins / h2h.total),
+    d: Math.round(100 * h2h.draws / h2h.total),
+    b: Math.round(100 * h2h.b_wins / h2h.total)
+  } : { a:0, d:0, b:0 };
+
+  const lastMeeting = h2h.last_meeting
+    ? `${h2h.last_meeting.year} (${teamA} ${h2h.last_meeting.score_a} - ${h2h.last_meeting.score_b} ${teamB})`
+    : "Chưa từng gặp tại World Cup";
+
+  const decayLine = h2h.time_decay_win_rate_a != null
+    ? `Win rate time-decayed của ${teamA}: ${pct(h2h.time_decay_win_rate_a)}% (trận gần đây trọng số cao hơn)`
+    : `Win rate time-decayed: chưa có dữ liệu`;
+
+  return `Bạn là chuyên gia phân tích bóng đá, đang dự đoán một trận đấu tại FIFA World Cup 2026.
+
+TRẬN ĐẤU: ${teamA} ${metaA.flag} vs ${teamB} ${metaB.flag}
+Vòng: Vòng bảng ${group} · Match #${match}
+
+=== ĐỐI ĐẦU LỊCH SỬ TẠI WORLD CUP ===
+Tổng số trận: ${h2h.total}
+${teamA} thắng: ${h2h.a_wins} (${h2hTotalPct.a}%)
+Hòa: ${h2h.draws} (${h2hTotalPct.d}%)
+${teamB} thắng: ${h2h.b_wins} (${h2hTotalPct.b}%)
+Tổng bàn thắng: ${teamA} ${h2h.a_goals_total} - ${h2h.b_goals_total} ${teamB}
+Gặp gần nhất tại WC: ${lastMeeting}
+${decayLine}
+
+=== SỨC MẠNH LỊCH SỬ WORLD CUP ===
+${teamA}: ${tsA.wc_appearances} kỳ tham dự · ${tsA.wc_titles} chức vô địch · Win rate ${pct(tsA.win_rate)}% · TB ${fmtNum(tsA.avg_goals_for)} bàn/trận (thủng ${fmtNum(tsA.avg_goals_against)})
+${teamB}: ${tsB.wc_appearances} kỳ tham dự · ${tsB.wc_titles} chức vô địch · Win rate ${pct(tsB.win_rate)}% · TB ${fmtNum(tsB.avg_goals_for)} bàn/trận (thủng ${fmtNum(tsB.avg_goals_against)})
+
+=== PHONG ĐỘ 2 KỲ GẦN NHẤT (2018, 2022) ===
+${teamA}: ${tsA.recent_form_2018_2022.played}T - ${tsA.recent_form_2018_2022.won}W ${tsA.recent_form_2018_2022.drawn}D ${tsA.recent_form_2018_2022.lost}L, ${tsA.recent_form_2018_2022.gf}-${tsA.recent_form_2018_2022.ga} (bàn/thủng)
+${teamB}: ${tsB.recent_form_2018_2022.played}T - ${tsB.recent_form_2018_2022.won}W ${tsB.recent_form_2018_2022.drawn}D ${tsB.recent_form_2018_2022.lost}L, ${tsB.recent_form_2018_2022.gf}-${tsB.recent_form_2018_2022.ga} (bàn/thủng)
+
+=== BỐI CẢNH 2026 ===
+- Tier FIFA ranking (ước lượng): ${teamA} Tier ${ctx.rank_tier_a} vs ${teamB} Tier ${ctx.rank_tier_b} (Tier 1 = top 10 thế giới)
+- Lợi thế sân nhà: ${hostAdvantageVi(ctx.host_advantage, teamA, teamB)}
+- Liên đoàn: ${ctx.confederation_matchup}
+
+=== NHIỆM VỤ ===
+1. Phân tích các số liệu trên + sử dụng kiến thức của bạn về phong độ 2024-2026, ngôi sao chủ chốt, HLV, lối chơi.
+2. Đưa ra xác suất 3 kết quả (cộng phải = 100).
+3. Dự đoán tỉ số có khả năng nhất.
+4. Nêu 3 yếu tố then chốt quyết định trận đấu.
+5. Viết 3 đoạn phân tích NGẮN bằng tiếng Việt (giọng văn báo chí, mỗi đoạn 2-3 câu).
+
+Trả về DUY NHẤT JSON sau, không markdown, không text thừa:
+{
+  "prob_a": <int 0-100>,
+  "prob_draw": <int 0-100>,
+  "prob_b": <int 0-100>,
+  "score_a": <int 0-7>,
+  "score_b": <int 0-7>,
+  "winner": "${teamA}" | "${teamB}" | "Hòa",
+  "confidence": <int 0-100>,
+  "key_factors": ["yếu tố 1", "yếu tố 2", "yếu tố 3"],
+  "analysis_form": "<đoạn 1: phong độ hiện tại 2024-2026>",
+  "analysis_history": "<đoạn 2: lịch sử đối đầu>",
+  "analysis_prediction": "<đoạn 3: dự đoán + lý do>"
+}
+
+Đảm bảo prob_a + prob_draw + prob_b = 100.`;
+}
+
+// ============================================================
+// === GEMINI: API CALL =======================================
+// ============================================================
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+
+// Robust JSON parsing — handles ```json fences, trailing text, and truncated responses
+function tryParseJSON(text) {
+  if (!text) return null;
+  // Strip markdown fences
+  let s = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+  // Find the first { and try parsing progressively shorter substrings if truncated
+  const start = s.indexOf("{");
+  if (start < 0) return null;
+  s = s.slice(start);
+  try { return JSON.parse(s); } catch (e) { /* truncated — try repair */ }
+  // Truncation repair: walk back to last complete key:value pair, close braces
+  // Strategy: try parsing s, s up to last comma, s up to last } — adding closing braces as needed
+  for (let i = s.length; i > 0; i--) {
+    const candidate = s.slice(0, i);
+    // Count open vs close braces/brackets/quotes
+    let braces = 0, brackets = 0, inStr = false, escape = false;
+    for (const ch of candidate) {
+      if (escape) { escape = false; continue; }
+      if (ch === "\\") { escape = true; continue; }
+      if (ch === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (ch === "{") braces++;
+      else if (ch === "}") braces--;
+      else if (ch === "[") brackets++;
+      else if (ch === "]") brackets--;
+    }
+    if (inStr) continue; // inside a string — keep walking back
+    // Try truncating to last complete key-value (before any trailing comma/colon)
+    let trimmed = candidate.replace(/,\s*$/, "").replace(/:\s*$/, "");
+    // Add missing closing braces/brackets
+    let closer = "";
+    for (let k = 0; k < brackets; k++) closer += "]";
+    for (let k = 0; k < braces; k++) closer += "}";
+    try {
+      const result = JSON.parse(trimmed + closer);
+      return result;
+    } catch (e) { /* keep trying */ }
+    // Skip ahead to next promising position to avoid O(n²) blowup on huge strings
+    if (i > 2000) i -= 50;
+  }
+  return null;
+}
+
+async function callGemini(prompt, apiKey) {
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      response_mime_type: "application/json",
+      temperature: 0.6,
+      maxOutputTokens: 4096,
+      thinkingConfig: { thinkingBudget: 0 }
+    }
+  };
+  const res = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Gemini API ${res.status}: ${errText.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const finishReason = data?.candidates?.[0]?.finishReason;
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Phản hồi rỗng từ Gemini (finishReason: " + (finishReason || "unknown") + ")");
+  let parsed = tryParseJSON(text);
+  if (!parsed) throw new Error("Không parse được JSON từ Gemini. Raw (200 ký tự đầu): " + text.slice(0, 200));
+  // Normalize: ensure probs add to 100
+  const sum = (parsed.prob_a || 0) + (parsed.prob_draw || 0) + (parsed.prob_b || 0);
+  if (sum > 0 && sum !== 100) {
+    parsed.prob_a   = Math.round(parsed.prob_a   * 100 / sum);
+    parsed.prob_draw= Math.round(parsed.prob_draw* 100 / sum);
+    parsed.prob_b   = 100 - parsed.prob_a - parsed.prob_draw;
+  }
+  return parsed;
+}
+
+async function predictMatch(fixture) {
+  const apiKey = localStorage.getItem("gemini_api_key");
+  if (!apiKey) {
+    showToast("Hãy nhập Gemini API key trong phần ⚙️ Cài đặt", "error");
+    throw new Error("missing_api_key");
+  }
+  const cached = localStorage.getItem(`pred_match_${fixture.match}`);
+  if (cached) {
+    try { return JSON.parse(cached); }
+    catch (e) { /* fall through */ }
+  }
+
+  const features = computeMatchFeatures(fixture.home, fixture.away, fixture.group);
+  const prompt = buildGeminiPrompt(fixture, features);
+  const result = await callGemini(prompt, apiKey);
+  const bundle = { fixture, features, result, predicted_at: Date.now() };
+  try {
+    localStorage.setItem(`pred_match_${fixture.match}`, JSON.stringify(bundle));
+  } catch (e) { /* storage may be full — ignore */ }
+  return bundle;
+}
+
+// ============================================================
+// === RENDER: GROUPS + FIXTURES ==============================
+// ============================================================
+function fixturesOfGroup(g) {
+  return FIXTURES_2026.filter(f => f.group === g).sort((a, b) => a.match - b.match);
+}
+
+function renderGroups() {
+  const root = document.getElementById("groupsContainer");
+  root.innerHTML = "";
+  for (const g of Object.keys(GROUPS_2026)) {
+    const teams = GROUPS_2026[g];
+    const fixtures = fixturesOfGroup(g);
+
+    const card = document.createElement("section");
+    card.className = "group-card rounded-2xl p-5 shadow-xl";
+    card.dataset.group = g;
+    card.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-slate-950 bg-emerald-400 rounded-md px-2 py-0.5">BẢNG ${g}</span>
+        </div>
+        <button class="predict-group-btn text-xs bg-slate-800 hover:bg-emerald-600 hover:text-white border border-slate-600 rounded-lg px-2.5 py-1 transition" data-group="${g}">
+          🔮 Dự đoán bảng ${g}
+        </button>
+      </div>
+      <ul class="space-y-1 mb-4 text-sm">
+        ${teams.map(t => {
+          const meta = TEAM_META[t] || {flag:"🏳️"};
+          return `<li class="flex items-center gap-2"><span class="flag">${meta.flag}</span><span class="text-slate-200">${t}</span><span class="ml-auto text-xs text-slate-500">${meta.conf || ""}</span></li>`;
+        }).join("")}
+      </ul>
+      <div class="border-t border-slate-700/60 pt-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Các trận đấu</div>
+          <div class="text-[10px] text-slate-600">Nhấn 🔮 để dự đoán</div>
+        </div>
+        <div class="space-y-2" id="matches-${g}">
+          ${fixtures.map(f => renderMatchRow(f)).join("")}
+        </div>
+        <div id="standings-${g}" class="hidden mt-4 pt-3 border-t border-slate-700/40"></div>
+      </div>
+    `;
+    root.appendChild(card);
+  }
+
+  // Attach handlers
+  document.querySelectorAll(".predict-group-btn").forEach(btn => {
+    btn.addEventListener("click", () => predictGroup(btn.dataset.group));
+  });
+  document.querySelectorAll(".predict-match-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const matchNum = parseInt(btn.dataset.match, 10);
+      const fixture = FIXTURES_2026.find(f => f.match === matchNum);
+      if (fixture) predictAndRenderMatch(fixture);
+    });
+  });
+
+  // Restore cached predictions on load
+  for (const f of FIXTURES_2026) {
+    const cached = localStorage.getItem(`pred_match_${f.match}`);
+    if (cached) {
+      try {
+        const bundle = JSON.parse(cached);
+        renderPredictionIntoRow(f, bundle);
+      } catch(e) {}
+    }
+  }
+  // Try to render standings for any group fully predicted
+  for (const g of Object.keys(GROUPS_2026)) {
+    maybeRenderStandings(g);
+  }
+}
+
+function renderMatchRow(f) {
+  const ha = TEAM_META[f.home] || {flag:"🏳️"};
+  const aw = TEAM_META[f.away] || {flag:"🏳️"};
+  return `
+    <div class="match-row rounded-lg border border-slate-700/40 p-2.5" id="row-${f.match}">
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-[10px] font-mono bg-slate-800 text-emerald-300 rounded px-1.5 py-0.5">M${f.match}</span>
+        <span class="flex-1 truncate"><span class="flag mr-1">${ha.flag}</span>${f.home}</span>
+        <span class="text-slate-500 text-xs">vs</span>
+        <span class="flex-1 truncate text-right"><span class="flag mr-1">${aw.flag}</span>${f.away}</span>
+        <button class="predict-match-btn ml-2 text-xs bg-slate-800 hover:bg-emerald-600 hover:text-white border border-slate-700 rounded-md px-2 py-1 transition shrink-0" data-match="${f.match}" aria-label="Dự đoán trận ${f.home} vs ${f.away}">
+          🔮
+        </button>
+      </div>
+      <div class="prediction-slot mt-0 hidden" aria-live="polite"></div>
+    </div>
+  `;
+}
+
+// ============================================================
+// === RENDER: PREDICTION CARD ================================
+// ============================================================
+function renderPredictionIntoRow(fixture, bundle) {
+  const row = document.getElementById(`row-${fixture.match}`);
+  if (!row) return;
+  const slot = row.querySelector(".prediction-slot");
+  slot.innerHTML = renderPredictionHTML(fixture, bundle);
+  slot.classList.remove("hidden");
+}
+
+function renderPredictionHTML(fixture, bundle) {
+  const { result: r, features: feat } = bundle;
+  const teamA = fixture.home, teamB = fixture.away;
+  const ha = TEAM_META[teamA] || {flag:"🏳️"};
+  const aw = TEAM_META[teamB] || {flag:"🏳️"};
+  const winnerLabel = r.winner === "Hòa"
+    ? `🤝 Hòa`
+    : `${r.winner === teamA ? ha.flag : aw.flag} ${r.winner}`;
+
+  const probA = r.prob_a ?? 0, probD = r.prob_draw ?? 0, probB = r.prob_b ?? 0;
+
+  return `
+    <div class="pred-panel rounded-xl p-3.5 mt-2.5 space-y-3">
+      <!-- Header -->
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-slate-400">Dự đoán AI</div>
+          <div class="font-bold text-emerald-300">${winnerLabel}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400">Tỉ số</div>
+          <div class="font-mono font-bold text-xl text-white">${r.score_a ?? "?"} - ${r.score_b ?? "?"}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400">Confidence</div>
+          <div class="font-bold text-blue-300">${r.confidence ?? "?"}%</div>
+        </div>
+      </div>
+
+      <!-- Probability bar -->
+      <div>
+        <div class="prob-bar">
+          <div class="prob-seg bg-emerald-500" style="width: ${probA}%"></div>
+          <div class="prob-seg bg-slate-500" style="width: ${probD}%"></div>
+          <div class="prob-seg bg-blue-500" style="width: ${probB}%"></div>
+        </div>
+        <div class="flex justify-between text-[10px] mt-1 text-slate-400">
+          <span class="text-emerald-400 font-semibold">${teamA} ${probA}%</span>
+          <span>Hòa ${probD}%</span>
+          <span class="text-blue-400 font-semibold">${probB}% ${teamB}</span>
+        </div>
+      </div>
+
+      <!-- Key factors -->
+      ${Array.isArray(r.key_factors) && r.key_factors.length ? `
+        <div class="flex flex-wrap gap-1.5">
+          ${r.key_factors.map(k => `<span class="chip text-[11px] rounded-full px-2 py-0.5">${escapeHtml(k)}</span>`).join("")}
+        </div>
+      ` : ""}
+
+      <!-- 3 analysis paragraphs -->
+      <div class="grid sm:grid-cols-3 gap-2 text-xs">
+        <div class="pred-block rounded-lg p-2.5">
+          <div class="font-bold text-emerald-300 mb-1">🔥 Phong độ</div>
+          <p class="text-slate-200 leading-relaxed">${escapeHtml(r.analysis_form || "")}</p>
+        </div>
+        <div class="pred-block rounded-lg p-2.5">
+          <div class="font-bold text-emerald-300 mb-1">📜 Lịch sử</div>
+          <p class="text-slate-200 leading-relaxed">${escapeHtml(r.analysis_history || "")}</p>
+        </div>
+        <div class="pred-block rounded-lg p-2.5">
+          <div class="font-bold text-emerald-300 mb-1">🎯 Dự đoán</div>
+          <p class="text-slate-200 leading-relaxed">${escapeHtml(r.analysis_prediction || "")}</p>
+        </div>
+      </div>
+
+      <!-- Data transparency panel -->
+      <details class="text-xs">
+        <summary class="text-slate-400 hover:text-emerald-300 transition cursor-pointer">
+          📊 <span class="underline decoration-dotted underline-offset-2">Dữ liệu AI đã dùng</span>
+        </summary>
+        ${renderFeatureTable(teamA, teamB, feat)}
+      </details>
+    </div>
+  `;
+}
+
+function renderFeatureTable(teamA, teamB, feat) {
+  const h2h = feat.h2h, tsA = feat.team_a_strength, tsB = feat.team_b_strength, ctx = feat.context;
+  const lastMeeting = h2h.last_meeting
+    ? `${h2h.last_meeting.year}: ${teamA} ${h2h.last_meeting.score_a}-${h2h.last_meeting.score_b} ${teamB}`
+    : "Chưa từng";
+  return `
+    <div class="mt-2 pred-block rounded-lg p-3 space-y-3">
+      <div>
+        <div class="font-bold text-emerald-300 text-[11px] mb-1">🧮 H2H tại World Cup</div>
+        <table class="data-table w-full text-[11px]">
+          <tr><th>Tổng số trận</th><td class="text-white font-semibold">${h2h.total}</td></tr>
+          <tr><th>${teamA} thắng / Hòa / ${teamB} thắng</th><td class="text-white">${h2h.a_wins} / ${h2h.draws} / ${h2h.b_wins}</td></tr>
+          <tr><th>Tổng bàn thắng</th><td class="text-white">${teamA} ${h2h.a_goals_total} – ${h2h.b_goals_total} ${teamB}</td></tr>
+          <tr><th>Gặp gần nhất</th><td class="text-white">${lastMeeting}</td></tr>
+          <tr><th>Win rate time-decayed của ${teamA}</th><td class="text-white">${h2h.time_decay_win_rate_a != null ? pct(h2h.time_decay_win_rate_a) + "%" : "—"}</td></tr>
+        </table>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div>
+          <div class="font-bold text-emerald-300 text-[11px] mb-1">💪 Sức mạnh ${teamA}</div>
+          <table class="data-table w-full text-[11px]">
+            <tr><th>Số kỳ WC tham dự</th><td class="text-white">${tsA.wc_appearances}</td></tr>
+            <tr><th>Chức vô địch</th><td class="text-white">${tsA.wc_titles}</td></tr>
+            <tr><th>Trận / Thắng / Hòa / Thua</th><td class="text-white">${tsA.all_time_matches}/${tsA.all_time_wins}/${tsA.all_time_draws}/${tsA.all_time_losses}</td></tr>
+            <tr><th>Win rate</th><td class="text-white">${pct(tsA.win_rate)}%</td></tr>
+            <tr><th>TB bàn thắng / thủng</th><td class="text-white">${fmtNum(tsA.avg_goals_for)} / ${fmtNum(tsA.avg_goals_against)}</td></tr>
+            <tr><th>2018+2022 (T-W-D-L)</th><td class="text-white">${tsA.recent_form_2018_2022.played}-${tsA.recent_form_2018_2022.won}-${tsA.recent_form_2018_2022.drawn}-${tsA.recent_form_2018_2022.lost}, ${tsA.recent_form_2018_2022.gf}/${tsA.recent_form_2018_2022.ga}</td></tr>
+          </table>
+        </div>
+        <div>
+          <div class="font-bold text-emerald-300 text-[11px] mb-1">💪 Sức mạnh ${teamB}</div>
+          <table class="data-table w-full text-[11px]">
+            <tr><th>Số kỳ WC tham dự</th><td class="text-white">${tsB.wc_appearances}</td></tr>
+            <tr><th>Chức vô địch</th><td class="text-white">${tsB.wc_titles}</td></tr>
+            <tr><th>Trận / Thắng / Hòa / Thua</th><td class="text-white">${tsB.all_time_matches}/${tsB.all_time_wins}/${tsB.all_time_draws}/${tsB.all_time_losses}</td></tr>
+            <tr><th>Win rate</th><td class="text-white">${pct(tsB.win_rate)}%</td></tr>
+            <tr><th>TB bàn thắng / thủng</th><td class="text-white">${fmtNum(tsB.avg_goals_for)} / ${fmtNum(tsB.avg_goals_against)}</td></tr>
+            <tr><th>2018+2022 (T-W-D-L)</th><td class="text-white">${tsB.recent_form_2018_2022.played}-${tsB.recent_form_2018_2022.won}-${tsB.recent_form_2018_2022.drawn}-${tsB.recent_form_2018_2022.lost}, ${tsB.recent_form_2018_2022.gf}/${tsB.recent_form_2018_2022.ga}</td></tr>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="font-bold text-emerald-300 text-[11px] mb-1">🌍 Bối cảnh 2026</div>
+        <table class="data-table w-full text-[11px]">
+          <tr><th>Tier ${teamA} vs ${teamB}</th><td class="text-white">Tier ${ctx.rank_tier_a} vs Tier ${ctx.rank_tier_b}</td></tr>
+          <tr><th>Lợi thế sân nhà</th><td class="text-white">${ctx.host_advantage === "A" ? teamA : ctx.host_advantage === "B" ? teamB : ctx.host_advantage === "both" ? "Cả hai" : "Không"}</td></tr>
+          <tr><th>Liên đoàn</th><td class="text-white">${ctx.confederation_matchup}</td></tr>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+// ============================================================
+// === RENDER: STANDINGS ======================================
+// ============================================================
+function maybeRenderStandings(g) {
+  const fixtures = fixturesOfGroup(g);
+  const allCached = fixtures.every(f => localStorage.getItem(`pred_match_${f.match}`));
+  if (!allCached) return;
+  renderStandings(g);
+}
+
+function renderStandings(g) {
+  const fixtures = fixturesOfGroup(g);
+  const teams = GROUPS_2026[g];
+  const table = {};
+  for (const t of teams) table[t] = { team: t, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0, GD: 0, Pts: 0 };
+
+  for (const f of fixtures) {
+    const cached = localStorage.getItem(`pred_match_${f.match}`);
+    if (!cached) return;
+    const bundle = JSON.parse(cached);
+    const sA = bundle.result.score_a, sB = bundle.result.score_b;
+    if (typeof sA !== "number" || typeof sB !== "number") continue;
+    const A = table[f.home], B = table[f.away];
+    if (!A || !B) continue;
+    A.P++; B.P++;
+    A.GF += sA; A.GA += sB;
+    B.GF += sB; B.GA += sA;
+    if (sA > sB)      { A.W++; B.L++; A.Pts += 3; }
+    else if (sA < sB) { B.W++; A.L++; B.Pts += 3; }
+    else              { A.D++; B.D++; A.Pts += 1; B.Pts += 1; }
+  }
+  for (const t of teams) {
+    table[t].GD = table[t].GF - table[t].GA;
+  }
+  const sorted = Object.values(table).sort((a, b) =>
+    b.Pts - a.Pts || b.GD - a.GD || b.GF - a.GF || a.team.localeCompare(b.team)
+  );
+
+  const root = document.getElementById(`standings-${g}`);
+  if (!root) return;
+  root.classList.remove("hidden");
+  root.innerHTML = `
+    <div class="text-xs uppercase tracking-wider text-emerald-300 mb-2 font-semibold">📈 Bảng xếp hạng dự đoán</div>
+    <table class="w-full text-xs">
+      <thead>
+        <tr class="text-slate-400 border-b border-slate-700/50">
+          <th class="text-left py-1 font-medium">#</th>
+          <th class="text-left py-1 font-medium">Đội</th>
+          <th class="py-1 font-medium">P</th>
+          <th class="py-1 font-medium">W</th>
+          <th class="py-1 font-medium">D</th>
+          <th class="py-1 font-medium">L</th>
+          <th class="py-1 font-medium">GD</th>
+          <th class="py-1 font-medium text-emerald-300">Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sorted.map((row, i) => {
+          const meta = TEAM_META[row.team] || {flag:"🏳️"};
+          const qualifies = i < 2;
+          return `<tr class="border-b border-slate-800/40 ${qualifies ? "bg-emerald-500/5" : ""}">
+            <td class="py-1.5 ${qualifies ? "text-emerald-300 font-bold" : "text-slate-500"}">${i+1}</td>
+            <td class="py-1.5"><span class="flag mr-1">${meta.flag}</span>${row.team}</td>
+            <td class="py-1.5 text-center text-slate-300">${row.P}</td>
+            <td class="py-1.5 text-center text-slate-300">${row.W}</td>
+            <td class="py-1.5 text-center text-slate-300">${row.D}</td>
+            <td class="py-1.5 text-center text-slate-300">${row.L}</td>
+            <td class="py-1.5 text-center text-slate-300">${row.GD > 0 ? "+" : ""}${row.GD}</td>
+            <td class="py-1.5 text-center text-emerald-300 font-bold">${row.Pts}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+    <div class="text-[10px] text-slate-500 mt-1.5">✨ Top 2 (xanh) đi tiếp · vị trí 3 cạnh tranh suất "best third"</div>
+  `;
+}
+
+// ============================================================
+// === UI: SETTINGS MODAL =====================================
+// ============================================================
+function openSettings() {
+  const modal = document.getElementById("settingsModal");
+  modal.classList.remove("hidden");
+  const saved = localStorage.getItem("gemini_api_key") || "";
+  document.getElementById("apiKeyInput").value = saved;
+}
+function closeSettings() { document.getElementById("settingsModal").classList.add("hidden"); }
+function saveApiKey() {
+  const key = document.getElementById("apiKeyInput").value.trim();
+  if (!key) {
+    showToast("Vui lòng nhập API key", "error");
+    return;
+  }
+  localStorage.setItem("gemini_api_key", key);
+  showToast("Đã lưu API key", "success");
+  closeSettings();
+}
+
+// ============================================================
+// === UI: METHODOLOGY MODAL ==================================
+// ============================================================
+function openMethodology() { document.getElementById("methodologyModal").classList.remove("hidden"); }
+function closeMethodology() { document.getElementById("methodologyModal").classList.add("hidden"); }
+
+// ============================================================
+// === UI: TOASTS =============================================
+// ============================================================
+function showToast(message, kind = "info") {
+  const container = document.getElementById("toastContainer");
+  const t = document.createElement("div");
+  const colors = {
+    success: "bg-emerald-500/95 border-emerald-400",
+    error:   "bg-rose-500/95 border-rose-400",
+    info:    "bg-slate-700/95 border-slate-600"
+  };
+  t.className = `toast ${colors[kind] || colors.info} border text-white text-sm rounded-lg px-4 py-2.5 shadow-2xl max-w-xs`;
+  t.textContent = message;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 4200);
+}
+
+// ============================================================
+// === EVENT HANDLERS =========================================
+// ============================================================
+async function predictAndRenderMatch(fixture) {
+  const row = document.getElementById(`row-${fixture.match}`);
+  const btn = row && row.querySelector(".predict-match-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+  }
+  try {
+    const bundle = await predictMatch(fixture);
+    renderPredictionIntoRow(fixture, bundle);
+    maybeRenderStandings(fixture.group);
+  } catch (e) {
+    console.error(e);
+    if (e.message !== "missing_api_key") {
+      showToast(`Lỗi dự đoán: ${e.message.slice(0, 100)}`, "error");
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = "🔮";
+    }
+  }
+}
+
+async function predictGroup(g) {
+  const fixtures = fixturesOfGroup(g);
+  const btn = document.querySelector(`.predict-group-btn[data-group="${g}"]`);
+  const original = btn ? btn.innerHTML : "";
+  if (btn) { btn.disabled = true; }
+  let done = 0;
+  for (const f of fixtures) {
+    if (btn) btn.innerHTML = `<span class="spinner"></span> ${done}/${fixtures.length}`;
+    try {
+      await predictAndRenderMatch(f);
+    } catch (e) {
+      if (e.message === "missing_api_key") break;
+    }
+    done++;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = original; }
+  maybeRenderStandings(g);
+}
+
+async function predictAll() {
+  const apiKey = localStorage.getItem("gemini_api_key");
+  if (!apiKey) {
+    showToast("Hãy nhập Gemini API key trong phần ⚙️ Cài đặt", "error");
+    openSettings();
+    return;
+  }
+  const all = [...FIXTURES_2026].sort((a, b) => a.match - b.match);
+  const wrap = document.getElementById("progressWrap");
+  const bar = document.getElementById("progressBar");
+  const lbl = document.getElementById("progressLabel");
+  const cnt = document.getElementById("progressCount");
+  const btn = document.getElementById("predictAllBtn");
+  wrap.classList.remove("hidden");
+  btn.disabled = true;
+  btn.classList.add("opacity-60");
+
+  let done = 0;
+  for (const f of all) {
+    lbl.textContent = `Match #${f.match} · ${f.home} vs ${f.away}`;
+    try {
+      await predictAndRenderMatch(f);
+    } catch (e) {
+      if (e.message === "missing_api_key") break;
+    }
+    done++;
+    cnt.textContent = `${done}/${all.length}`;
+    bar.style.width = `${(done / all.length) * 100}%`;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  // After everything, render all standings
+  for (const g of Object.keys(GROUPS_2026)) maybeRenderStandings(g);
+
+  btn.disabled = false;
+  btn.classList.remove("opacity-60");
+  lbl.textContent = "✅ Hoàn thành!";
+  showToast(`Đã dự đoán ${done}/${all.length} trận`, "success");
+}
+
+function clearCache() {
+  if (!confirm("Xoá toàn bộ dự đoán đã lưu? (API key sẽ được giữ nguyên)")) return;
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith("pred_match_")) keys.push(k);
+  }
+  keys.forEach(k => localStorage.removeItem(k));
+  showToast(`Đã xoá ${keys.length} dự đoán`, "success");
+  renderGroups();
+}
+
+// ============================================================
+// === COUNTDOWN ==============================================
+// ============================================================
+function updateCountdown() {
+  const target = new Date("2026-06-11T20:00:00-04:00").getTime(); // Opening: Mexico City
+  const now = Date.now();
+  const diff = target - now;
+  const el = document.getElementById("countdownValue");
+  if (!el) return;
+  if (diff <= 0) { el.textContent = "Đã khai mạc!"; return; }
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hrs  = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  el.textContent = `${days}d ${hrs}h`;
+}
+
+// ============================================================
+// === INIT ===================================================
+// ============================================================
+function init() {
+  renderGroups();
+  updateCountdown();
+  setInterval(updateCountdown, 60_000);
+
+  document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  document.getElementById("closeSettingsBtn").addEventListener("click", closeSettings);
+  document.getElementById("saveKeyBtn").addEventListener("click", saveApiKey);
+  document.getElementById("methodologyBtn").addEventListener("click", openMethodology);
+  document.getElementById("closeMethodologyBtn").addEventListener("click", closeMethodology);
+  document.getElementById("predictAllBtn").addEventListener("click", predictAll);
+  document.getElementById("clearCacheBtn").addEventListener("click", clearCache);
+
+  // Close modals on backdrop click
+  document.getElementById("settingsModal").addEventListener("click", (e) => {
+    if (e.target.id === "settingsModal") closeSettings();
+  });
+  document.getElementById("methodologyModal").addEventListener("click", (e) => {
+    if (e.target.id === "methodologyModal") closeMethodology();
+  });
+  // ESC closes modals
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeSettings(); closeMethodology(); }
+  });
+
+  // First-time hint
+  if (!localStorage.getItem("gemini_api_key")) {
+    setTimeout(() => showToast("💡 Mẹo: vào ⚙️ Cài đặt để thêm Gemini API key (miễn phí)", "info"), 800);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", init);
+</script>
+
+</body>
+</html>
