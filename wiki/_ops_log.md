@@ -14,3 +14,7 @@ summary: "Chronological log of all wiki operations"
 ---
 
 <!-- Operations will be appended below this line -->
+
+## [2026-05-12] ingest | fifa-worldcup-historical-matchresults — Kết quả 966 trận đấu FIFA World Cup 1930–2022
+
+## [2026-05-12] compile | 2 bài mới, 0 cập nhật từ raw/misc/fifa-worldcup-historical-matchresults.md

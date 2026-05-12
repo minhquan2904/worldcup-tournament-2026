@@ -1,4 +1,12 @@
 {
-  "last_updated": null,
-  "sources": {}
+  "last_updated": "2026-05-12",
+  "sources": {
+    "raw/misc/fifa-worldcup-historical-matchresults.md": {
+      "absorbed_at": "2026-05-12",
+      "wiki_articles": [
+        "concepts/du-lieu-lich-su-ket-qua-worldcup",
+        "concepts/phan-tich-doi-dau-world-cup"
+      ]
+    }
+  }
 }

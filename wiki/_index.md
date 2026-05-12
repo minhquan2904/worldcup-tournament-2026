@@ -9,16 +9,17 @@ summary: "Master index listing all wiki articles with summaries and aliases"
 
 > Master catalog of the entire wiki. This file is automatically updated by the AI every time an article is added or removed.
 
-**Total articles:** 0  
-**Last updated:** —
+**Total articles:** 2  
+**Last updated:** 2026-05-12
 
 ---
 
-## Concepts (0 articles)
+## Concepts (2 articles)
 
 | Article | Aliases | Summary |
 |---------|---------|---------|
-| _No articles yet. Run `/ingest` followed by `/compile` to start building._ | | |
+| [[du-lieu-lich-su-ket-qua-worldcup]] | wc-match-data, lịch-sử-kết-quả-world-cup | Tập dữ liệu 966 trận đấu tại FIFA World Cup 1930–2022 — cấu trúc, đặc điểm, và ứng dụng phân tích thống kê. |
+| [[phan-tich-doi-dau-world-cup]] | head-to-head-worldcup, đối-đầu-world-cup | Phương pháp và kết quả phân tích lịch sử đối đầu trực tiếp giữa các đội tuyển qua 22 kỳ FIFA World Cup. |
 
 ## Tools (0 articles)
 
@@ -40,11 +41,11 @@ summary: "Master index listing all wiki articles with summaries and aliases"
 
 ---
 
-## Raw Sources (0 documents)
+## Raw Sources (1 document)
 
 | Source | Type | Date Ingested |
 |--------|------|---------------|
-| _No raw sources yet. Run `/ingest` to add your first source._ | | |
+| `raw/misc/fifa-worldcup-historical-matchresults.md` | data/CSV | 2026-05-12 |
 
 ---
 
