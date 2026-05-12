@@ -1,1 +1,53 @@
-{}
+{
+  "description": "Reverse link index. Maps article -> list of articles linking TO it.",
+  "last_updated": "1778554454.6804485",
+  "total_articles": 8,
+  "total_links": 21,
+  "backlinks": {
+    "cau-truc-giai-dau-worldcup-2026": [
+      "bang-dau-worldcup-2026",
+      "du-lieu-lich-su-ket-qua-worldcup",
+      "phan-tich-doi-dau-world-cup"
+    ],
+    "phan-tich-doi-dau-world-cup": [
+      "bang-dau-worldcup-2026",
+      "cau-truc-giai-dau-worldcup-2026",
+      "du-lieu-lich-su-ket-qua-worldcup"
+    ],
+    "du-lieu-lich-su-ket-qua-worldcup": [
+      "bang-dau-worldcup-2026",
+      "cau-truc-giai-dau-worldcup-2026",
+      "phan-tich-doi-dau-world-cup"
+    ],
+    "bang-dau-worldcup-2026": [
+      "cau-truc-giai-dau-worldcup-2026",
+      "du-lieu-lich-su-ket-qua-worldcup",
+      "phan-tich-doi-dau-world-cup"
+    ],
+    "mo-hinh-du-doan-world-cup-2026": [
+      "du-lieu-lich-su-ket-qua-worldcup",
+      "phan-tich-doi-dau-world-cup"
+    ],
+    "index": [
+      "overview"
+    ],
+    "bài-viết-1": [
+      "overview"
+    ],
+    "bài-viết-2": [
+      "overview"
+    ],
+    "bài-viết-3": [
+      "overview"
+    ],
+    "wikilink": [
+      "_purpose"
+    ],
+    "wc2026-fixture-raw": [
+      "cau-truc-giai-dau-worldcup-2026"
+    ],
+    "wc2026-fixture-format": [
+      "cau-truc-giai-dau-worldcup-2026"
+    ]
+  }
+}
